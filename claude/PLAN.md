@@ -72,6 +72,70 @@ Priority shown as color + label.
 - Editing a task due in the repeated DST hour keeps its exact deadline
 - Locale-aware date formats; deep-link constant moved out of the UI package
 
+## Phase 7 — Drag order and category headers ✅ (not committed yet)
+- Open tasks are in the order the user drags them (handle ⠿ on each row); replaces the automatic sort
+- New task → top of its category; changing category in the editor → top of the new one
+- Home groups open tasks under a header per category (alphabetical, Uncategorized last); Done stays one section
+- Dragging a task under another header moves it to that category
+- "Move up/down" accessibility actions do the same as dragging
+- Room v2: `position` column; auto-migration seeds it from the old sort, so existing tasks keep their order
+- Library: `sh.calvin.reorderable` 2.4.3
+- Tests: `ReorderTasks`, grouping, header crossing, v1 → v2 migration on a real v1 database
+
+## Phase 8 — Requested changes (planned)
+Done in this order: small visual changes first, sub tasks last because they touch everything.
+
+### 8.1 Priority order and colors
+- Editor priority picker reads Minimal → Urgent, left to right (Urgent at the far right)
+- Medium becomes cyan, light and dark:
+  - Light: dot `#00ACC1`, chip `#E0F7FA`, text `#006064`
+  - Dark: dot `#4DD0E1`, chip `#003C44`, text `#B2EBF2`
+  - Check on the phone that cyan Medium and blue Low are easy to tell apart; nudge Low toward indigo if not
+- History "Done by priority" bars stay vertical with Urgent on top (unchanged)
+- Tests: screen test for the picker's left-to-right order
+
+### 8.2 Adding several tasks at once
+- **Quick add**: a "Quick add" entry next to the + button opens a sheet with a multi-line box
+  - One task per non-blank line, trimmed; a paste of a list works the same way
+  - Priority, category, and optional deadline chosen once in the sheet, applied to every line
+  - Live count on the button: "Add 4 tasks"
+  - The tasks keep the typed order and land at the top of their category
+- **Save and add another** in the editor (new tasks only, not when editing)
+  - Saves, then clears title, description and deadline; keeps priority and category
+  - Snackbar "Task added" so it's clear the save happened
+- Domain: `AddTasks` (validates every line first; adds all or none, in one transaction)
+- Tests: `AddTasks` (blank lines skipped, order kept, all-or-nothing), editor "add another" flow
+
+### 8.3 Sort menu on All tasks (and category lists)
+- A sort button in the list header opens a menu:
+  - **Sort by**: My order (default) / Priority (Urgent first, then nearest deadline) / Deadline (nearest first, none last)
+  - **Group by category**: on/off (on = today's headers)
+- Dragging only in "My order"; in other sorts the handle is hidden
+- Remembered across launches (DataStore, like Appearance); one setting shared by all lists
+- Done section unaffected (most recently done first)
+- Sorting is applied in `ObserveTaskList`, so it's unit-tested without the UI
+- Tests: each sort mode, grouping on/off, handle hidden outside My order, setting survives a restart
+
+### 8.4 Sub tasks (full tasks under a parent)
+Defaults below; any of them can change before starting.
+- **One level only**: a sub task can't have its own sub tasks
+- **Same category as its parent**, always; changing the parent's category moves its sub tasks too
+- Each sub task is a full task: own priority, deadline, reminder, done/archived state
+- **Display**: indented under the parent, with a "2/5 done" count on the parent row; collapse/expand arrow
+- **Adding**: "Add sub task" in the parent's editor (and Quick add can target a parent)
+- **Order**: sub tasks are dragged within their parent; dragging the parent moves the whole block;
+  other sorts sort sub tasks within their parent
+- **Ticking the parent** with open sub tasks: asks "Also mark the 3 sub tasks done?" (Yes / Only this one)
+- **Ticking the last open sub task**: the parent stays open (no automatic completion)
+- **Archiving** a parent archives its done sub tasks with it; restoring brings them back
+- **Deleting** a parent asks for confirmation and deletes its sub tasks
+- **Stats** count every task, parent or sub task, as one
+- **Lists screen counts**: sub tasks counted like any task
+- Data: Room v3, `parent_id` column (foreign key to tasks, cascade delete), migration test v2 → v3
+- Domain: `Task.parentId`; rules in `AddTask`/`UpdateTask`/`MarkTaskDone`/`ArchiveTask`/`DeleteTask`
+  (parent must exist, be open, have no parent itself, and share the category)
+- Tests: every rule above, reminders on sub tasks, migration, UI indent/collapse/drag
+
 ## Ideas for later
 - Undo after archiving or deleting
 - Custom reminder offsets ("Custom…" chip)
