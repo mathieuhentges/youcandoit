@@ -1,0 +1,4 @@
+<resources>
+    <!-- Dark window background before Compose draws, so dark mode doesn't flash white on launch. -->
+    <style name="Theme.Todo" parent="android:Theme.Material.NoActionBar" />
+</resources>

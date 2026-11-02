@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Concept D "Checklist": three rows with priority dots, and a check mark. 108dp adaptive-icon canvas;
+     scaled to 85% so the check stays inside the 66dp safe zone under any launcher mask. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.85"
+        android:scaleY="0.85">
+        <!-- Priority dots: urgent, high, low -->
+        <path android:fillColor="#D93025" android:pathData="M24,38a4,4 0 1,0 8,0a4,4 0 1,0 -8,0z" />
+        <path android:fillColor="#F57C00" android:pathData="M24,54a4,4 0 1,0 8,0a4,4 0 1,0 -8,0z" />
+        <path android:fillColor="#4285F4" android:pathData="M24,70a4,4 0 1,0 8,0a4,4 0 1,0 -8,0z" />
+        <!-- List rows -->
+        <path android:strokeColor="#C4C7CC" android:strokeWidth="6" android:strokeLineCap="round" android:pathData="M39,38L59,38" />
+        <path android:strokeColor="#C4C7CC" android:strokeWidth="6" android:strokeLineCap="round" android:pathData="M39,54L53,54" />
+        <path android:strokeColor="#C4C7CC" android:strokeWidth="6" android:strokeLineCap="round" android:pathData="M39,70L47,70" />
+        <!-- Check -->
+        <path
+            android:strokeColor="#2B59C3"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M55,60L66,71L86,46" />
+    </group>
+</vector>

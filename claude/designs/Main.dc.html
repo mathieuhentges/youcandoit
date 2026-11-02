@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home — All tasks</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2B59C3}a:hover{color:#1E4296}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F7F7F9; font-family: Roboto, system-ui, sans-serif; color: #1B1C1F; display: flex; flex-direction: column; position: relative; overflow: hidden">
+
+  <header style="padding: 28px 12px 6px 8px; display: flex; align-items: flex-start; gap: 2px">
+    <div style="flex: 1; padding-left: 12px; display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-size: 30px; font-weight: 500; letter-spacing: -0.2px">All tasks</h1>
+      <p style="margin: 0; font-size: 14px; color: #5F6368">5 open · <span style="color: #B3261E; font-weight: 500">1 overdue</span> · 3 done</p>
+    </div>
+    <a href="Appearance.dc.html" aria-label="Appearance" style="width: 48px; height: 48px; border-radius: 24px; display: flex; align-items: center; justify-content: center; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#45494E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg></a>
+  </header>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 10px 16px 96px; overflow: hidden">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 4px; background: #FFFFFF; border-radius: 16px; box-sizing: border-box; min-height: 64px">
+      <button aria-label="Mark done: Pay electricity bill" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: none; padding: 0; cursor: pointer"><span style="width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid #D93025; box-sizing: border-box; display: block"></span></button>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Pay electricity bill</div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #5F6368"><span style="color: #B3261E; font-weight: 500">Overdue · Sat, Oct 31</span><span>· Home</span></div>
+      </div>
+      <span style="flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #FCE8E6; color: #A50E0E; font-size: 12px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 50%; background: #D93025"></span>Urgent</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 4px; background: #FFFFFF; border-radius: 16px; box-sizing: border-box; min-height: 64px">
+      <button aria-label="Mark done: Submit expense report" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: none; padding: 0; cursor: pointer"><span style="width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid #D93025; box-sizing: border-box; display: block"></span></button>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Submit expense report</div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #5F6368"><span>Today, 17:00</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Reminder set"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg><span>· Work</span></div>
+      </div>
+      <span style="flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #FCE8E6; color: #A50E0E; font-size: 12px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 50%; background: #D93025"></span>Urgent</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 4px; background: #FFFFFF; border-radius: 16px; box-sizing: border-box; min-height: 64px">
+      <button aria-label="Mark done: Prepare sprint demo" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: none; padding: 0; cursor: pointer"><span style="width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid #F57C00; box-sizing: border-box; display: block"></span></button>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Prepare sprint demo</div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #5F6368"><span>Wed, Nov 4, 10:00</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Reminder set"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg><span>· Work</span></div>
+      </div>
+      <span style="flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #FEEFE3; color: #8F4400; font-size: 12px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F57C00"></span>High</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 4px; background: #FFFFFF; border-radius: 16px; box-sizing: border-box; min-height: 64px">
+      <button aria-label="Mark done: Buy groceries for the week" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: none; padding: 0; cursor: pointer"><span style="width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid #E0A100; box-sizing: border-box; display: block"></span></button>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Buy groceries for the week</div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #5F6368"><span>Tomorrow, 23:59 · Groceries</span></div>
+      </div>
+      <span style="flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #FEF7E0; color: #6F5200; font-size: 12px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 50%; background: #E0A100"></span>Medium</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 4px; background: #FFFFFF; border-radius: 16px; box-sizing: border-box; min-height: 64px">
+      <button aria-label="Mark done: Fix squeaky door" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: none; padding: 0; cursor: pointer"><span style="width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid #4285F4; box-sizing: border-box; display: block"></span></button>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Fix squeaky door</div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #5F6368"><span>No deadline · Home</span></div>
+      </div>
+      <span style="flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #E8F0FE; color: #174EA6; font-size: 12px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 50%; background: #4285F4"></span>Low</span>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 4px 2px">
+      <h2 style="margin: 0; font-size: 14px; font-weight: 500; color: #45494E">Done · 3</h2>
+      <button type="button" style="height: 36px; padding: 0 12px; border: none; border-radius: 18px; background: transparent; color: {{accent}}; font: 500 14px Roboto, system-ui, sans-serif; display: flex; align-items: center; gap: 6px; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v4H3z"></path><path d="M5 9v10h14V9M10 13h4"></path></svg>Archive done</button>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 4px; background: #FFFFFF; border-radius: 16px; min-height: 56px; box-sizing: border-box">
+      <button aria-label="Mark not done: Call insurance company" aria-pressed="true" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: none; padding: 0; cursor: pointer"><span style="width: 22px; height: 22px; border-radius: 50%; background: #F57C00; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></button>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 15px; color: #5F6368; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Call insurance company</div>
+        <div style="font-size: 13px; color: #5F6368">Done 14:32 · Home</div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 4px; background: #FFFFFF; border-radius: 16px; min-height: 56px; box-sizing: border-box">
+      <button aria-label="Mark not done: Review pull requests" aria-pressed="true" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: none; padding: 0; cursor: pointer"><span style="width: 22px; height: 22px; border-radius: 50%; background: #D93025; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></button>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 15px; color: #5F6368; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Review pull requests</div>
+        <div style="font-size: 13px; color: #5F6368">Done 11:05 · Work</div>
+      </div>
+    </div>
+
+    <div style="position: relative; border-radius: 16px; overflow: hidden; background: #DCE5F8; min-height: 56px">
+      <div style="position: absolute; top: 0; right: 0; bottom: 0; width: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #1E3F8A; font-size: 12px; font-weight: 500"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E3F8A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v4H3z"></path><path d="M5 9v10h14V9M10 13h4"></path></svg>Archive</div>
+      <div style="position: relative; display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 4px; background: #FFFFFF; border-radius: 16px; min-height: 56px; box-sizing: border-box; margin-right: 96px; box-shadow: 2px 0 6px rgba(27,28,31,0.08)">
+      <button aria-label="Mark not done: Buy birthday card" aria-pressed="true" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: none; padding: 0; cursor: pointer"><span style="width: 22px; height: 22px; border-radius: 50%; background: #9AA0A6; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></button>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 15px; color: #5F6368; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Buy birthday card</div>
+        <div style="font-size: 13px; color: #5F6368">Done 09:10 · Uncategorized</div>
+      </div>
+      </div>
+    </div>
+  </main>
+
+  <a href="NewTask.dc.html" aria-label="New task" style="position: absolute; right: 20px; bottom: 100px; width: 60px; height: 60px; border-radius: 18px; background: {{accent}}; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(27,28,31,0.18); text-decoration: none"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></a>
+
+  <nav aria-label="Main" style="position: absolute; left: 0; right: 0; bottom: 0; height: 80px; background: #FFFFFF; border-top: 1px solid #E3E5E8; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center">
+    <a href="Main.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #1B1C1F; font-size: 12px; font-weight: 700"><span style="width: 64px; height: 32px; border-radius: 16px; background: #DCE5F8; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1C1F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path><path d="M10 20v-6h4v6"></path></svg></span>Home</a>
+    <a href="Categories.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #5F6368; font-size: 12px; font-weight: 500"><span style="width: 64px; height: 32px; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></span>Lists</a>
+    <a href="History.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #5F6368; font-size: 12px; font-weight: 500"><span style="width: 64px; height: 32px; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v4H3z"></path><path d="M5 9v10h14V9M10 13h4"></path></svg></span>History</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2B59C3","options":["#2B59C3","#1B6E5A","#6B3FA0","#1B1C1F"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#2B59C3' };
+  }
+}
+</script>
+</body>
+</html>

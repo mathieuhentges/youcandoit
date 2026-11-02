@@ -1,0 +1,144 @@
+<resources>
+    <string name="app_name">You Can Do It!</string>
+    <!-- Shown under the home-screen icon, where only ~10 characters fit. -->
+    <string name="launcher_label">Can Do It</string>
+
+    <!-- Welcome (first launch only) -->
+    <string name="welcome_title">You Can Do It, Jeanne!</string>
+    <string name="welcome_body">Write down what’s on your mind, pick how urgent it is, and tick it off when it’s done.</string>
+    <string name="welcome_start">Let’s go</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_lists">Lists</string>
+    <string name="nav_history">History</string>
+
+    <!-- Titles -->
+    <string name="title_all_tasks">All tasks</string>
+    <string name="title_uncategorized">Uncategorized</string>
+    <string name="title_lists">Lists</string>
+    <string name="title_history">History</string>
+    <string name="title_new_task">New task</string>
+    <string name="title_edit_task">Edit task</string>
+    <string name="subtitle_lists">Tap a category to see its tasks</string>
+    <string name="subtitle_history">Archived tasks and your progress</string>
+
+    <!-- Counts -->
+    <string name="count_open">%1$d open</string>
+    <string name="count_overdue">%1$d overdue</string>
+    <string name="count_done">%1$d done</string>
+    <string name="count_empty">No tasks</string>
+    <string name="section_done">Done · %1$d</string>
+
+    <!-- Actions -->
+    <string name="action_new_task">New task</string>
+    <string name="action_back">Back</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_ok">OK</string>
+    <string name="action_create">Create</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_delete_task">Delete task</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_archive_done">Archive done</string>
+    <string name="action_new_category">New category</string>
+    <string name="action_new_category_short">+ New</string>
+    <string name="action_mark_done">Mark done: %1$s</string>
+    <string name="action_mark_not_done">Mark not done: %1$s</string>
+    <string name="action_restore">Restore task: %1$s</string>
+    <string name="action_options">Options for %1$s</string>
+
+    <!-- Task rows -->
+    <string name="meta_no_deadline">No deadline</string>
+    <string name="meta_overdue">Overdue · %1$s</string>
+    <string name="meta_done">Done %1$s</string>
+    <string name="reminder_set">Reminder set</string>
+    <string name="day_today">Today</string>
+    <string name="day_tomorrow">Tomorrow</string>
+    <string name="day_yesterday">Yesterday</string>
+
+    <!-- Priorities -->
+    <string name="priority_urgent">Urgent</string>
+    <string name="priority_high">High</string>
+    <string name="priority_medium">Medium</string>
+    <string name="priority_low">Low</string>
+    <string name="priority_minimal">Minimal</string>
+
+    <!-- Editor -->
+    <string name="label_title">Title</string>
+    <string name="label_description">Description</string>
+    <string name="hint_description">Add details (optional)</string>
+    <string name="label_priority">Priority</string>
+    <string name="label_category">Category</string>
+    <string name="label_deadline">Deadline</string>
+    <string name="label_has_deadline">Has a deadline</string>
+    <string name="label_reminder">Reminder</string>
+    <string name="label_category_name">Category name</string>
+    <string name="reminder_none">None</string>
+    <string name="reminder_at_deadline">At deadline</string>
+    <string name="reminder_hour_before">1 hour before</string>
+    <string name="reminder_day_before">1 day before</string>
+    <string name="reminder_minutes_before">%1$d min before</string>
+    <string name="reminder_hours_before">%1$d h before</string>
+    <string name="reminder_days_before">%1$d days before</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_new_category">New category</string>
+    <string name="dialog_rename_category">Rename category</string>
+    <string name="dialog_delete_category">Delete “%1$s”?</string>
+    <string name="dialog_delete_category_body">Its tasks are kept and move to Uncategorized.</string>
+    <string name="dialog_delete_task">Delete this task?</string>
+    <string name="dialog_delete_task_body">This can’t be undone. To keep a record, mark it done and archive it instead.</string>
+
+    <!-- Lists -->
+    <string name="lists_note">Deleting a category keeps its tasks — they move to Uncategorized.</string>
+
+    <!-- History -->
+    <string name="period_7_days">7 days</string>
+    <string name="period_30_days">30 days</string>
+    <string name="period_all_time">All time</string>
+    <string name="stat_done">Done</string>
+    <string name="stat_open">Open now</string>
+    <string name="stat_overdue">Overdue</string>
+    <string name="history_by_priority">Done by priority</string>
+    <string name="history_archived">Archived</string>
+
+    <!-- Empty states -->
+    <string name="empty_tasks">Nothing here yet. Tap + to add a task.</string>
+    <string name="empty_history">Archived tasks will appear here.</string>
+
+    <!-- Messages -->
+    <plurals name="message_archived">
+        <item quantity="one">%1$d task archived</item>
+        <item quantity="other">%1$d tasks archived</item>
+    </plurals>
+
+    <!-- Appearance -->
+    <string name="appearance_title">Appearance</string>
+    <string name="theme_system">Follow phone</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+
+    <!-- Notifications -->
+    <string name="channel_reminders">Task reminders</string>
+    <string name="channel_reminders_description">Reminders for tasks with a deadline</string>
+    <string name="notification_due">Due %1$s</string>
+    <string name="notification_mark_done">Mark done</string>
+    <string name="note_notifications_off">Notifications are off, so reminders won’t show.</string>
+    <string name="note_turn_on">Turn on</string>
+    <string name="note_inexact">Reminders may arrive a few minutes late.</string>
+    <string name="note_allow_exact">Allow exact timing</string>
+    <string name="note_reminder_falls_back">That’s already past, so you’ll be reminded at the deadline instead.</string>
+
+    <!-- Errors -->
+    <string name="error_blank_title">Give the task a title</string>
+    <string name="error_deadline_past">Pick a deadline in the future</string>
+    <string name="error_reminder_without_deadline">A reminder needs a deadline</string>
+    <string name="error_category_not_found">That category no longer exists</string>
+    <string name="error_task_not_found">That task no longer exists</string>
+    <string name="error_task_archived">Restore this task before changing it</string>
+    <string name="error_task_not_done">Mark the task done before archiving it</string>
+    <string name="error_blank_category">Give the category a name</string>
+    <string name="error_duplicate_category">“%1$s” already exists</string>
+</resources>

@@ -1,0 +1,4 @@
+<resources>
+    <!-- Window theme only; all in-app styling comes from Compose's TodoTheme. -->
+    <style name="Theme.Todo" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

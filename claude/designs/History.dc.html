@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>History</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2B59C3}a:hover{color:#1E4296}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F7F7F9; font-family: Roboto, system-ui, sans-serif; color: #1B1C1F; display: flex; flex-direction: column; position: relative; overflow: hidden">
+
+  <header style="padding: 28px 20px 8px; display: flex; flex-direction: column; gap: 4px">
+    <h1 style="margin: 0; font-size: 30px; font-weight: 500; letter-spacing: -0.2px">History</h1>
+    <p style="margin: 0; font-size: 14px; color: #5F6368">Archived tasks and your progress</p>
+  </header>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 8px 16px 96px; overflow: hidden">
+
+    <div role="group" aria-label="Period" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: #E9EBEE; border-radius: 20px; padding: 4px; gap: 4px">
+      <sc-for list="{{periods}}" as="p" hint-placeholder-count="3">
+        <button type="button" aria-pressed="{{p.pressed}}" onClick="{{p.pick}}" style="height: 36px; border: none; border-radius: 16px; font: 500 14px Roboto, system-ui, sans-serif; cursor: pointer; {{p.style}}">{{p.label}}</button>
+      </sc-for>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+      <div style="background: #FFFFFF; border-radius: 16px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 28px; font-weight: 700; color: {{accent}}">{{stats.closed}}</span>
+        <span style="font-size: 13px; color: #5F6368">Done</span>
+      </div>
+      <div style="background: #FFFFFF; border-radius: 16px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 28px; font-weight: 700">5</span>
+        <span style="font-size: 13px; color: #5F6368">Open now</span>
+      </div>
+      <div style="background: #FFFFFF; border-radius: 16px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 28px; font-weight: 700; color: #B3261E">1</span>
+        <span style="font-size: 13px; color: #5F6368">Overdue</span>
+      </div>
+    </div>
+
+    <section style="background: #FFFFFF; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 500">Done by priority</h2>
+      <sc-for list="{{bars}}" as="b" hint-placeholder-count="5">
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 13px">
+          <span style="width: 58px; flex: none; color: #45494E">{{b.label}}</span>
+          <span style="flex: 1; height: 10px; background: #F1F3F4; border-radius: 5px; overflow: hidden; display: block"><span style="display: block; height: 100%; border-radius: 5px; background: {{b.color}}; width: {{b.pct}}"></span></span>
+          <span style="width: 28px; flex: none; text-align: right; font-weight: 500">{{b.count}}</span>
+        </div>
+      </sc-for>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 4px 4px 0; font-size: 13px; font-weight: 500; color: #45494E">Archived</h2>
+
+      <div style="display: flex; align-items: center; gap: 12px; padding: 8px 4px 8px 14px; background: #FFFFFF; border-radius: 16px">
+        <span style="width: 22px; height: 22px; border-radius: 50%; background: #F57C00; display: flex; align-items: center; justify-content: center; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 15px; font-weight: 500; color: #45494E">Call insurance company</span>
+          <span style="font-size: 13px; color: #5F6368">Done Today, 14:32 · Home</span>
+        </div>
+        <button type="button" aria-label="Restore task: Call insurance company" style="width: 44px; height: 44px; border: none; background: none; border-radius: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg></button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; padding: 8px 4px 8px 14px; background: #FFFFFF; border-radius: 16px">
+        <span style="width: 22px; height: 22px; border-radius: 50%; background: #D93025; display: flex; align-items: center; justify-content: center; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 15px; font-weight: 500; color: #45494E">Review pull requests</span>
+          <span style="font-size: 13px; color: #5F6368">Done Today, 11:05 · Work</span>
+        </div>
+        <button type="button" aria-label="Restore task: Review pull requests" style="width: 44px; height: 44px; border: none; background: none; border-radius: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg></button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; padding: 8px 4px 8px 14px; background: #FFFFFF; border-radius: 16px">
+        <span style="width: 22px; height: 22px; border-radius: 50%; background: #4285F4; display: flex; align-items: center; justify-content: center; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 15px; font-weight: 500; color: #45494E">Water the plants</span>
+          <span style="font-size: 13px; color: #5F6368">Done Yesterday, 19:40 · Home</span>
+        </div>
+        <button type="button" aria-label="Restore task: Water the plants" style="width: 44px; height: 44px; border: none; background: none; border-radius: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg></button>
+      </div>
+    </section>
+  </main>
+
+  <nav aria-label="Main" style="position: absolute; left: 0; right: 0; bottom: 0; height: 80px; background: #FFFFFF; border-top: 1px solid #E3E5E8; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center">
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #5F6368; font-size: 12px; font-weight: 500"><span style="width: 64px; height: 32px; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path><path d="M10 20v-6h4v6"></path></svg></span>Home</a>
+    <a href="Categories.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #5F6368; font-size: 12px; font-weight: 500"><span style="width: 64px; height: 32px; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></span>Lists</a>
+    <a href="History.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #1B1C1F; font-size: 12px; font-weight: 700"><span style="width: 64px; height: 32px; border-radius: 16px; background: #DCE5F8; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1C1F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v4H3z"></path><path d="M5 9v10h14V9M10 13h4"></path></svg></span>History</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2B59C3","options":["#2B59C3","#1B6E5A","#6B3FA0","#1B1C1F"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { period: 'week' };
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#2B59C3';
+    const period = (this.state && this.state.period) || 'week';
+    const DATA = {
+      week: [2, 4, 3, 2, 1],
+      month: [6, 12, 11, 8, 4],
+      all: [15, 34, 38, 26, 15],
+    };
+    const LEVELS = [
+      { label: 'Urgent', color: '#D93025' },
+      { label: 'High', color: '#F57C00' },
+      { label: 'Medium', color: '#E0A100' },
+      { label: 'Low', color: '#4285F4' },
+      { label: 'Minimal', color: '#9AA0A6' },
+    ];
+    const counts = DATA[period];
+    const max = Math.max.apply(null, counts);
+    const PERIODS = [
+      { id: 'week', label: '7 days' },
+      { id: 'month', label: '30 days' },
+      { id: 'all', label: 'All time' },
+    ];
+    return {
+      accent,
+      stats: { closed: counts.reduce((a, b) => a + b, 0) },
+      bars: LEVELS.map((l, i) => ({
+        ...l,
+        count: counts[i],
+        pct: Math.round((counts[i] / max) * 100) + '%',
+      })),
+      periods: PERIODS.map((p) => {
+        const on = p.id === period;
+        return {
+          ...p,
+          pressed: String(on),
+          style: on
+            ? 'background: #FFFFFF; color: #1B1C1F; box-shadow: 0 1px 2px rgba(27,28,31,0.15)'
+            : 'background: transparent; color: #45494E',
+          pick: () => this.setState({ period: p.id }),
+        };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>
