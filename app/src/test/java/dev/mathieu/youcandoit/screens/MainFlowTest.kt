@@ -9,7 +9,10 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
 import dev.mathieu.youcandoit.domain.fakes.SequentialIds
@@ -27,6 +30,7 @@ import dev.mathieu.youcandoit.domain.usecase.ObserveArchivedTasks
 import dev.mathieu.youcandoit.domain.usecase.ObserveCategories
 import dev.mathieu.youcandoit.domain.usecase.ObserveProgressStats
 import dev.mathieu.youcandoit.domain.usecase.ObserveTaskList
+import dev.mathieu.youcandoit.domain.usecase.ReorderTasks
 import dev.mathieu.youcandoit.domain.usecase.RestoreTask
 import dev.mathieu.youcandoit.domain.usecase.UpdateTask
 import dev.mathieu.youcandoit.ui.FakeTicker
@@ -80,6 +84,7 @@ class MainFlowTest {
         markTaskNotDone = MarkTaskNotDone(env.tasks, env.reminders),
         archiveTask = ArchiveTask(env.tasks, env.clock),
         archiveDoneTasks = ArchiveDoneTasks(env.tasks, env.clock),
+        reorderTasks = ReorderTasks(env.tasks, env.categories),
     )
     private val history = HistoryViewModel(
         observeProgressStats = ObserveProgressStats(env.tasks, env.clock),
@@ -110,6 +115,7 @@ class MainFlowTest {
                             onArchive = home::onArchive,
                             onArchiveDone = home::onArchiveDone,
                             onMessageShown = home::onMessageShown,
+                            onReorder = home::onReorder,
                         )
                     }
                     Screen.HISTORY -> {
@@ -140,6 +146,7 @@ class MainFlowTest {
 
         // History
         compose.runOnIdle { screen = Screen.HISTORY }
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Buy milk"))
         compose.onNodeWithText("Buy milk").assertIsDisplayed()
         compose.onNodeWithContentDescription("Restore task: Buy milk").assertIsDisplayed()
     }

@@ -98,6 +98,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.core)
     implementation(libs.compose.material.icons.extended) // R8 strips the unused icons in release
+    implementation(libs.reorderable)
     debugImplementation(libs.compose.ui.tooling)
 
     implementation(libs.hilt.android)

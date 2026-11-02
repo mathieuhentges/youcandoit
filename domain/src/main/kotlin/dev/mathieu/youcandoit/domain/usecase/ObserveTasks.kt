@@ -9,15 +9,14 @@ import dev.mathieu.youcandoit.domain.model.TaskListView
 import dev.mathieu.youcandoit.domain.repository.CategoryRepository
 import dev.mathieu.youcandoit.domain.repository.TaskRepository
 import java.time.Clock
-import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 /**
- * Home (All tasks) or one category. Open tasks: highest priority first, then nearest deadline
- * (none last), then oldest. Done tasks below them, most recently done first.
+ * Home (All tasks) or one category. Open tasks in the order the user dragged them into.
+ * Done tasks below them, most recently done first.
  */
 class ObserveTaskList @Inject constructor(
     private val tasks: TaskRepository,
@@ -33,9 +32,9 @@ class ObserveTaskList @Inject constructor(
 
     companion object {
         val OPEN_ORDER: Comparator<Task> =
-            compareByDescending<Task> { it.priority.level }
-                .thenBy(nullsLast<Instant>()) { it.deadline }
+            compareBy<Task> { it.position }
                 .thenBy { it.createdAt }
+                .thenBy { it.id.value }
     }
 }
 

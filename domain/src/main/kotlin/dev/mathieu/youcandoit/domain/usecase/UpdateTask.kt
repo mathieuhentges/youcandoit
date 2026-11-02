@@ -70,6 +70,8 @@ class UpdateTask @Inject constructor(
             categoryId = params.categoryId,
             deadline = params.deadline,
             reminder = reminder,
+            // A task moved to another category starts at the top there, like a new one.
+            position = if (params.categoryId != existing.categoryId) tasks.topPositionIn(params.categoryId) else existing.position,
         )
         tasks.upsert(updated)
         reminders.sync(updated)

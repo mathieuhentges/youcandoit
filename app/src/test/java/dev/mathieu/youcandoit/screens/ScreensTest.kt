@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
 import dev.mathieu.youcandoit.domain.fakes.NOW
 import dev.mathieu.youcandoit.domain.fakes.aTask
@@ -26,6 +28,7 @@ import dev.mathieu.youcandoit.ui.editor.TaskEditorActions
 import dev.mathieu.youcandoit.ui.editor.TaskEditorContent
 import dev.mathieu.youcandoit.ui.editor.TaskEditorUiState
 import dev.mathieu.youcandoit.ui.tasks.ListTitle
+import dev.mathieu.youcandoit.ui.tasks.TaskGroup
 import dev.mathieu.youcandoit.ui.tasks.TaskListContent
 import dev.mathieu.youcandoit.ui.tasks.TaskListUiState
 import dev.mathieu.youcandoit.ui.theme.TodoTheme
@@ -62,7 +65,7 @@ class ScreensTest {
                     state = TaskListUiState(
                         isLoading = false,
                         title = ListTitle.All,
-                        open = listOf(item("a", Priority.URGENT)),
+                        groups = listOf(TaskGroup(null, CategoryLabel.Uncategorized, listOf(item("a", Priority.URGENT)))),
                         done = listOf(item("b", done = true)),
                     ),
                     onAddTask = {},
@@ -88,6 +91,7 @@ class ScreensTest {
         assertEquals(true, archivedAll)
     }
 
+    @OptIn(ExperimentalTestApi::class)
     @Test
     fun `a done task can be archived without swiping, through its accessibility action`() {
         val archived = mutableListOf<String>()
@@ -163,6 +167,41 @@ class ScreensTest {
         assertEquals(1, saves)
     }
 
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun `home shows a header per category, and moving a task past one moves it to that category`() {
+        val work = CategoryId("work")
+        var reordered: Pair<CategoryId?, List<String>>? = null
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = TaskListUiState(
+                        isLoading = false,
+                        groups = listOf(
+                            TaskGroup(work, CategoryLabel.Named("Work"), listOf(item("a"))),
+                            TaskGroup(null, CategoryLabel.Uncategorized, listOf(item("b"), item("c"))),
+                        ),
+                    ),
+                    onAddTask = {},
+                    onEditTask = {},
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                    onReorder = { category, ids -> reordered = category to ids.map { it.value } },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Work").assertIsDisplayed()
+        compose.onNodeWithText("Uncategorized").assertIsDisplayed()
+
+        compose.onNodeWithText("Task b").performCustomAccessibilityActionWithLabel("Move up")
+
+        assertEquals(work to listOf("a", "b"), reordered)
+    }
+
     @Test
     fun `the deadline section shows the date, time and reminder choices`() {
         compose.setContent {
@@ -181,9 +220,9 @@ class ScreensTest {
             }
         }
 
-        compose.onNodeWithText("Tue, Nov 3").assertIsDisplayed()
+        compose.onNodeWithText("Tue, Nov 3").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("At deadline").assertIsSelected()
-        compose.onNodeWithText("1 hour before").assertIsDisplayed()
+        compose.onNodeWithText("1 hour before").performScrollTo().assertIsDisplayed()
     }
 
     @Test

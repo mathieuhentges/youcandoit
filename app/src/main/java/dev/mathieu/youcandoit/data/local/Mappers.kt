@@ -34,6 +34,7 @@ internal fun Task.toEntity(): TaskEntity {
         createdAt = createdAt.toEpochMilli(),
         doneAt = doneAt?.toEpochMilli(),
         archivedAt = archivedAt?.toEpochMilli(),
+        position = position,
     )
 }
 
@@ -47,6 +48,7 @@ internal fun TaskEntity.toDomain(): Task = Task(
     reminder = reminderFrom(reminderType, reminderOffsetSeconds),
     createdAt = Instant.ofEpochMilli(createdAt),
     status = statusFrom(doneAt, archivedAt),
+    position = position,
 )
 
 internal fun statusFrom(doneAt: Long?, archivedAt: Long?): TaskStatus = when {

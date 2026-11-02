@@ -46,6 +46,7 @@ class AddTask @Inject constructor(
             reminder = ReminderPolicy.effectiveReminder(params.reminder, params.deadline, now),
             createdAt = now,
             status = TaskStatus.Open,
+            position = tasks.topPositionIn(params.categoryId),
         )
         tasks.upsert(task)
         reminders.sync(task)

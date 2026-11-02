@@ -19,6 +19,7 @@ fun aTask(
     createdAt: Instant = NOW,
     categoryId: CategoryId? = null,
     status: TaskStatus = TaskStatus.Open,
+    position: Long = 0,
 ) = Task(
     id = TaskId(id),
     title = "Task $id",
@@ -29,6 +30,7 @@ fun aTask(
     reminder = reminder,
     createdAt = createdAt,
     status = status,
+    position = position,
 )
 
 fun aCategory(id: String, name: String = id.replaceFirstChar { it.uppercase() }) =

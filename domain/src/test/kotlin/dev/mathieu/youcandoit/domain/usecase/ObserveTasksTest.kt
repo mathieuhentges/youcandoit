@@ -26,18 +26,15 @@ class ObserveTasksTest {
     private fun List<Task>.ids() = map { it.id.value }
 
     @Test
-    fun `open tasks are ordered by priority, then nearest deadline, then oldest`() = runTest {
+    fun `open tasks are in drag order, whatever their priority or deadline`() = runTest {
         listOf(
-            aTask("f", priority = LOW),
-            aTask("a", priority = HIGH),
-            aTask("e", priority = LOW, createdAt = NOW.minus(Duration.ofHours(1))),
-            aTask("b", priority = HIGH, deadline = NOW.plus(Duration.ofDays(3))),
-            aTask("d", priority = URGENT),
-            aTask("c", priority = HIGH, deadline = NOW.plus(Duration.ofDays(1))),
+            aTask("c", priority = URGENT, position = 2),
+            aTask("a", priority = LOW, position = 0),
+            aTask("b", priority = HIGH, deadline = NOW.plus(Duration.ofDays(1)), position = 1),
         ).forEach { env.tasks.upsert(it) }
 
         observeList().test {
-            assertEquals(listOf("d", "c", "b", "a", "e", "f"), awaitItem().open.ids())
+            assertEquals(listOf("a", "b", "c"), awaitItem().open.ids())
         }
     }
 

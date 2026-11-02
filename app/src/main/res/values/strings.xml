@@ -41,6 +41,9 @@
     <string name="action_delete">Delete</string>
     <string name="action_delete_task">Delete task</string>
     <string name="action_archive">Archive</string>
+    <string name="action_reorder">Drag to reorder: %1$s</string>
+    <string name="action_move_up">Move up</string>
+    <string name="action_move_down">Move down</string>
     <string name="action_archive_done">Archive done</string>
     <string name="action_new_category">New category</string>
     <string name="action_new_category_short">+ New</string>

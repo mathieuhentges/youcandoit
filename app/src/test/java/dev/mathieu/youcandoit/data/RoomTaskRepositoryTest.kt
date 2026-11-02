@@ -55,6 +55,7 @@ class RoomTaskRepositoryTest {
             reminder = Reminder.BeforeDeadline(Duration.ofHours(3)),
             createdAt = NOW,
             status = TaskStatus.Done(NOW.plus(Duration.ofDays(1))),
+            position = -3,
         )
 
         tasks.upsert(task)

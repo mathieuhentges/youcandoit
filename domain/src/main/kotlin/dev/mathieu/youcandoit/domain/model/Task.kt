@@ -12,6 +12,8 @@ data class Task(
     val reminder: Reminder,
     val createdAt: Instant,
     val status: TaskStatus,
+    /** Where the user dragged it: lower comes first. Only compared within one category. */
+    val position: Long,
 ) {
     val isOpen: Boolean get() = status == TaskStatus.Open
     val isDone: Boolean get() = status is TaskStatus.Done

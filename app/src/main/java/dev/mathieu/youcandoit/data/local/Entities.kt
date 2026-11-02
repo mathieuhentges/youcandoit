@@ -42,4 +42,6 @@ data class TaskEntity(
     @ColumnInfo(name = "done_at") val doneAt: Long?,
     /** Epoch millis; non-null only for archived tasks (which always have [doneAt]). */
     @ColumnInfo(name = "archived_at") val archivedAt: Long?,
+    /** Drag order within the task's category; lower first. Added in version 2. */
+    @ColumnInfo(defaultValue = "0") val position: Long,
 )

@@ -17,6 +17,7 @@ import dev.mathieu.youcandoit.domain.usecase.MarkTaskDone
 import dev.mathieu.youcandoit.domain.usecase.MarkTaskNotDone
 import dev.mathieu.youcandoit.domain.usecase.ObserveCategories
 import dev.mathieu.youcandoit.domain.usecase.ObserveTaskList
+import dev.mathieu.youcandoit.domain.usecase.ReorderTasks
 import dev.mathieu.youcandoit.ui.common.CategoryLabel
 import dev.mathieu.youcandoit.ui.common.UserMessage
 import dev.mathieu.youcandoit.ui.navigation.ListKey
@@ -50,27 +51,60 @@ class TaskListViewModelTest {
         markTaskNotDone = MarkTaskNotDone(env.tasks, env.reminders),
         archiveTask = ArchiveTask(env.tasks, env.clock),
         archiveDoneTasks = ArchiveDoneTasks(env.tasks, env.clock),
+        reorderTasks = ReorderTasks(env.tasks, env.categories),
     )
 
     @Test
-    fun `home shows open tasks, then done tasks, each with its category`() = runTest {
+    fun `home groups open tasks under category headers, uncategorized last, then done tasks`() = runTest {
+        val home = aCategory("home", "Home")
         env.categories.upsert(work)
+        env.categories.upsert(home)
         env.tasks.upsert(aTask("a", categoryId = work.id))
         env.tasks.upsert(aTask("b", deadline = NOW.minus(Duration.ofHours(1))))
-        env.tasks.upsert(aTask("c").markDone(NOW))
+        env.tasks.upsert(aTask("h", categoryId = home.id))
+        env.tasks.upsert(aTask("c", categoryId = work.id).markDone(NOW))
         val vm = viewModel()
         keepCollecting(vm.uiState)
 
         val state = vm.uiState.value
         assertFalse(state.isLoading)
         assertEquals(ListTitle.All, state.title)
-        // Same priority: the one with a deadline comes first.
-        assertEquals(listOf("b", "a"), state.open.map { it.task.id.value })
-        assertEquals(CategoryLabel.Uncategorized, state.open[0].category)
-        assertEquals(CategoryLabel.Named("Work"), state.open[1].category)
-        assertTrue(state.open[0].isOverdue)
-        assertEquals(listOf("c"), state.done.map { it.task.id.value })
-        assertEquals(ListCounts(open = 2, overdue = 1, done = 1), state.counts)
+        assertEquals(
+            listOf(CategoryLabel.Named("Home"), CategoryLabel.Named("Work"), CategoryLabel.Uncategorized),
+            state.groups.map { it.label },
+        )
+        assertEquals(listOf(listOf("h"), listOf("a"), listOf("b")), state.groups.map { g -> g.items.map { it.task.id.value } })
+        // The header already says it; done tasks are ungrouped, so they keep theirs.
+        assertNull(state.open.first().category)
+        assertEquals(CategoryLabel.Named("Work"), state.done.single().category)
+        assertTrue(state.groups.last().items.single().isOverdue)
+        assertEquals(ListCounts(open = 3, overdue = 1, done = 1), state.counts)
+    }
+
+    @Test
+    fun `a category with only done tasks gets no header`() = runTest {
+        env.categories.upsert(work)
+        env.tasks.upsert(aTask("a"))
+        env.tasks.upsert(aTask("c", categoryId = work.id).markDone(NOW))
+        val vm = viewModel()
+        keepCollecting(vm.uiState)
+
+        assertEquals(listOf(CategoryLabel.Uncategorized), vm.uiState.value.groups.map { it.label })
+    }
+
+    @Test
+    fun `dropping a task under another header saves the order and moves it there`() = runTest {
+        env.categories.upsert(work)
+        env.tasks.upsert(aTask("a"))
+        env.tasks.upsert(aTask("w", categoryId = work.id))
+        val vm = viewModel()
+        keepCollecting(vm.uiState)
+
+        vm.onReorder(work.id, listOf(TaskId("a"), TaskId("w")))
+
+        val groups = vm.uiState.value.groups
+        assertEquals(listOf(CategoryLabel.Named("Work")), groups.map { it.label })
+        assertEquals(listOf("a", "w"), groups.single().items.map { it.task.id.value })
     }
 
     @Test

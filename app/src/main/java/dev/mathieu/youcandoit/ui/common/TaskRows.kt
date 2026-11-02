@@ -80,12 +80,19 @@ fun CategoryLabel.label(): String = when (this) {
     CategoryLabel.Uncategorized -> stringResource(R.string.title_uncategorized)
 }
 
+/** [dragHandle] is shown at the row's end, after the priority, where the list allows reordering. */
 @Composable
-fun OpenTaskRow(item: TaskItem, onToggle: () -> Unit, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun OpenTaskRow(
+    item: TaskItem,
+    onToggle: () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    dragHandle: (@Composable () -> Unit)? = null,
+) {
     val task = item.task
     Surface(onClick = onClick, shape = RowShape, color = MaterialTheme.colorScheme.surfaceContainerLowest, modifier = modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.heightIn(min = 64.dp).padding(start = 4.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
+            modifier = Modifier.heightIn(min = 64.dp).padding(start = 4.dp, end = if (dragHandle != null) 0.dp else 14.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -95,6 +102,7 @@ fun OpenTaskRow(item: TaskItem, onToggle: () -> Unit, onClick: () -> Unit, modif
                 OpenTaskMeta(item)
             }
             PriorityChip(task.priority)
+            dragHandle?.invoke()
         }
     }
 }
