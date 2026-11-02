@@ -29,11 +29,15 @@ class AddTask @Inject constructor(
         val categoryId: CategoryId? = null,
         val deadline: Instant? = null,
         val reminder: Reminder = Reminder.None,
+        /** Makes it a sub task; [categoryId] is then ignored: a sub task is in its parent's category. */
+        val parentId: TaskId? = null,
     )
 
     suspend operator fun invoke(params: Params): Result<Task> {
         val now = clock.instant()
-        validateTaskInput(params.title, params.deadline, params.reminder, params.categoryId, now, categories)
+        val parent = tasks.parentFor(params.parentId).getOrElse { return Result.failure(it) }
+        val categoryId = if (parent != null) parent.categoryId else params.categoryId
+        validateTaskInput(params.title, params.deadline, params.reminder, categoryId, now, categories)
             ?.let { return Result.failure(it) }
 
         val task = Task(
@@ -41,12 +45,13 @@ class AddTask @Inject constructor(
             title = params.title.trim(),
             description = params.description.trim(),
             priority = params.priority,
-            categoryId = params.categoryId,
+            categoryId = categoryId,
             deadline = params.deadline,
             reminder = ReminderPolicy.effectiveReminder(params.reminder, params.deadline, now),
             createdAt = now,
             status = TaskStatus.Open,
-            position = tasks.topPositionIn(params.categoryId),
+            position = tasks.topPositionIn(categoryId, params.parentId),
+            parentId = params.parentId,
         )
         tasks.upsert(task)
         reminders.sync(task)

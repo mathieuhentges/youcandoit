@@ -22,8 +22,16 @@ data class CategoryEntity(
             childColumns = ["category_id"],
             onDelete = ForeignKey.SET_NULL,
         ),
+        // Deleting a parent deletes its sub tasks. The app does it itself first (to cancel their
+        // reminders); this keeps the database consistent regardless.
+        ForeignKey(
+            entity = TaskEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["parent_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
-    indices = [Index("category_id")],
+    indices = [Index("category_id"), Index("parent_id")],
 )
 data class TaskEntity(
     @PrimaryKey val id: String,
@@ -44,4 +52,6 @@ data class TaskEntity(
     @ColumnInfo(name = "archived_at") val archivedAt: Long?,
     /** Drag order within the task's category; lower first. Added in version 2. */
     @ColumnInfo(defaultValue = "0") val position: Long,
+    /** Set for a sub task. Added in version 3. */
+    @ColumnInfo(name = "parent_id") val parentId: String?,
 )

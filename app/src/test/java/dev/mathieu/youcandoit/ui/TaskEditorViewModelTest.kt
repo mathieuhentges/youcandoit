@@ -13,10 +13,12 @@ import dev.mathieu.youcandoit.domain.model.Reminder
 import dev.mathieu.youcandoit.domain.model.TaskId
 import dev.mathieu.youcandoit.domain.model.TaskList
 import dev.mathieu.youcandoit.domain.usecase.AddTask
+import dev.mathieu.youcandoit.domain.usecase.AddTasks
 import dev.mathieu.youcandoit.domain.usecase.CreateCategory
 import dev.mathieu.youcandoit.domain.usecase.DeleteTask
 import dev.mathieu.youcandoit.domain.usecase.GetTask
 import dev.mathieu.youcandoit.domain.usecase.ObserveCategories
+import dev.mathieu.youcandoit.domain.usecase.ObserveSubTasks
 import dev.mathieu.youcandoit.domain.usecase.UpdateTask
 import dev.mathieu.youcandoit.ui.editor.TaskEditorViewModel
 import dev.mathieu.youcandoit.ui.navigation.ListKey
@@ -49,9 +51,11 @@ class TaskEditorViewModelTest {
         observeCategories = ObserveCategories(env.categories),
         getTask = GetTask(env.tasks),
         addTask = AddTask(env.tasks, env.categories, env.reminders, env.clock, SequentialIds("task")),
+        addTasks = AddTasks(env.tasks, env.categories, env.reminders, env.clock, SequentialIds("tasks")),
         updateTask = UpdateTask(env.tasks, env.categories, env.reminders, env.clock),
         deleteTask = DeleteTask(env.tasks, env.reminders),
         createCategory = CreateCategory(env.categories, env.clock, SequentialIds("cat")),
+        observeSubTasks = ObserveSubTasks(env.tasks),
         clock = env.clock,
         zone = zone,
     )
@@ -76,6 +80,95 @@ class TaskEditorViewModelTest {
 
         assertEquals(LocalDate.of(2026, 11, 1), vm.uiState.value.date)
         assertEquals(LocalTime.of(23, 59), vm.uiState.value.time)
+    }
+
+    @Test
+    fun `several at once adds one task per line with the shared priority and category`() = runTest {
+        env.categories.upsert(aCategory("work", "Work"))
+        val vm = viewModel()
+        vm.onSeveralAtOnceChange(true)
+        vm.onTitleChange("Milk\n\n  Eggs \nBread")
+        vm.onPriorityChange(Priority.HIGH)
+        vm.onCategoryChange(CategoryId("work"))
+
+        assertEquals(listOf("Milk", "Eggs", "Bread"), vm.uiState.value.newTitles)
+        vm.onSave()
+
+        assertTrue(vm.uiState.value.isFinished)
+        assertEquals(setOf("Milk", "Eggs", "Bread"), env.tasks.all.map { it.title }.toSet())
+        assertTrue(env.tasks.all.all { it.priority == Priority.HIGH && it.categoryId == CategoryId("work") })
+    }
+
+    @Test
+    fun `turning several at once off joins the lines into one title`() = runTest {
+        val vm = viewModel()
+        vm.onSeveralAtOnceChange(true)
+        vm.onTitleChange("Milk\nEggs")
+
+        vm.onSeveralAtOnceChange(false)
+
+        assertEquals("Milk Eggs", vm.uiState.value.title)
+    }
+
+    @Test
+    fun `save and add another keeps priority and category, clears the rest, and stays open`() = runTest {
+        env.categories.upsert(aCategory("work", "Work"))
+        val vm = viewModel()
+        vm.onTitleChange("First")
+        vm.onDescriptionChange("Notes")
+        vm.onPriorityChange(Priority.URGENT)
+        vm.onCategoryChange(CategoryId("work"))
+        vm.onDeadlineToggle(true)
+
+        vm.onSaveAndAddAnother()
+
+        val state = vm.uiState.value
+        assertFalse(state.isFinished)
+        assertEquals(1, state.justAdded)
+        assertEquals("", state.title)
+        assertEquals("", state.description)
+        assertFalse(state.hasDeadline)
+        assertEquals(Priority.URGENT, state.priority)
+        assertEquals(CategoryId("work"), state.categoryId)
+        assertEquals(listOf("First"), env.tasks.all.map { it.title })
+
+        vm.onAddedShown()
+        assertEquals(null, vm.uiState.value.justAdded)
+    }
+
+    @Test
+    fun `a new sub task names its parent and is saved under it, in its category`() = runTest {
+        env.categories.upsert(aCategory("work", "Work"))
+        env.tasks.upsert(aTask("p", categoryId = CategoryId("work")).copy(title = "Move house"))
+        val vm = viewModel(NavArgs.PARENT to "p")
+
+        assertEquals("Move house", vm.uiState.value.parentTitle)
+        vm.onTitleChange("Book the van")
+        vm.onSave()
+
+        val sub = env.tasks.all.single { it.title == "Book the van" }
+        assertEquals(TaskId("p"), sub.parentId)
+        assertEquals(CategoryId("work"), sub.categoryId)
+    }
+
+    @Test
+    fun `editing a parent lists its sub tasks and offers to add more`() = runTest {
+        env.tasks.upsert(aTask("p"))
+        env.tasks.upsert(aTask("c", parentId = TaskId("p")))
+        val vm = viewModel(NavArgs.TASK_ID to "p")
+
+        assertEquals(listOf("c"), vm.uiState.value.subTasks.map { it.id.value })
+        assertTrue(vm.uiState.value.canAddSubTasks)
+    }
+
+    @Test
+    fun `a sub task can't take sub tasks of its own`() = runTest {
+        env.tasks.upsert(aTask("p").copy(title = "Parent"))
+        env.tasks.upsert(aTask("c", parentId = TaskId("p")))
+        val vm = viewModel(NavArgs.TASK_ID to "c")
+
+        assertFalse(vm.uiState.value.canAddSubTasks)
+        assertEquals("Parent", vm.uiState.value.parentTitle)
     }
 
     @Test

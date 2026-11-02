@@ -18,6 +18,7 @@ class RoomTaskRepository @Inject constructor(
     override suspend fun upsertAll(tasks: List<Task>) = dao.upsertAll(tasks.map { it.toEntity() })
     override suspend fun findById(id: TaskId): Task? = dao.findById(id.value)?.toDomain()
     override suspend fun delete(id: TaskId) = dao.delete(id.value)
+    override suspend fun deleteAll(ids: Set<TaskId>) = dao.deleteAll(ids.map { it.value })
     override suspend fun unassignCategory(categoryId: CategoryId) = dao.unassignCategory(categoryId.value)
     override fun observeAll(): Flow<List<Task>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
 }

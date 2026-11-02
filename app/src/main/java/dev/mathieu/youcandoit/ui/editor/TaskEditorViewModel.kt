@@ -8,14 +8,17 @@ import dev.mathieu.youcandoit.domain.model.CategoryId
 import dev.mathieu.youcandoit.domain.model.DomainError
 import dev.mathieu.youcandoit.domain.model.Priority
 import dev.mathieu.youcandoit.domain.model.Reminder
+import dev.mathieu.youcandoit.domain.model.Task
 import dev.mathieu.youcandoit.domain.model.TaskId
 import dev.mathieu.youcandoit.domain.model.TaskList
 import dev.mathieu.youcandoit.domain.reminder.ReminderPolicy
 import dev.mathieu.youcandoit.domain.usecase.AddTask
+import dev.mathieu.youcandoit.domain.usecase.AddTasks
 import dev.mathieu.youcandoit.domain.usecase.CreateCategory
 import dev.mathieu.youcandoit.domain.usecase.DeleteTask
 import dev.mathieu.youcandoit.domain.usecase.GetTask
 import dev.mathieu.youcandoit.domain.usecase.ObserveCategories
+import dev.mathieu.youcandoit.domain.usecase.ObserveSubTasks
 import dev.mathieu.youcandoit.domain.usecase.UpdateTask
 import dev.mathieu.youcandoit.ui.common.asDomainError
 import dev.mathieu.youcandoit.ui.navigation.ListKey
@@ -55,8 +58,22 @@ data class TaskEditorUiState(
     val newCategory: NewCategoryDialog? = null,
     /** The picked "before" reminder is already too late; it will be set at the deadline instead. */
     val reminderFallsBackToDeadline: Boolean = false,
+    /** New tasks only: [title] holds one task per line, and the other fields apply to all of them. */
+    val severalAtOnce: Boolean = false,
+    /** How many tasks "Save and add another" just added, for a one-off confirmation. */
+    val justAdded: Int? = null,
+    /** Set for a sub task (new or edited): its parent's title, shown instead of the category picker. */
+    val parentTitle: String? = null,
+    /** Editing a top-level task: its sub tasks, open first. */
+    val subTasks: List<Task> = emptyList(),
+    /** Editing an open, top-level task: it can take more sub tasks. */
+    val canAddSubTasks: Boolean = false,
 ) {
-    val canSave: Boolean get() = title.isNotBlank() && !isSaving && !isLoading
+    /** The titles a save would add: one per non-blank line in "several" mode, else just [title]. */
+    val newTitles: List<String> get() =
+        if (severalAtOnce) title.lines().map { it.trim() }.filter { it.isNotEmpty() } else listOfNotNull(title.takeIf { it.isNotBlank() })
+
+    val canSave: Boolean get() = newTitles.isNotEmpty() && !isSaving && !isLoading
 
     /** The preset choices, plus the task's own reminder if it isn't one of them. */
     val reminderOptions: List<Reminder> get() = if (reminder in REMINDER_PRESETS) REMINDER_PRESETS else REMINDER_PRESETS + reminder
@@ -84,6 +101,9 @@ interface TaskEditorActions {
     fun onTimeChange(time: LocalTime)
     fun onReminderChange(reminder: Reminder)
     fun onSave()
+    fun onSaveAndAddAnother()
+    fun onAddedShown()
+    fun onSeveralAtOnceChange(enabled: Boolean)
     fun onDelete()
     fun onNewCategoryClick()
     fun onNewCategoryNameChange(name: String)
@@ -97,14 +117,17 @@ class TaskEditorViewModel @Inject constructor(
     observeCategories: ObserveCategories,
     private val getTask: GetTask,
     private val addTask: AddTask,
+    private val addTasks: AddTasks,
     private val updateTask: UpdateTask,
     private val deleteTask: DeleteTask,
     private val createCategory: CreateCategory,
+    private val observeSubTasks: ObserveSubTasks,
     private val clock: Clock,
     private val zone: ZoneId,
 ) : ViewModel(), TaskEditorActions {
-    private val taskId: TaskId? = savedStateHandle.get<String>(NavArgs.TASK_ID)?.let { TaskId(it) }
+    val taskId: TaskId? = savedStateHandle.get<String>(NavArgs.TASK_ID)?.let { TaskId(it) }
     private val startingList: TaskList = ListKey.decode(savedStateHandle.get<String>(NavArgs.LIST))
+    private val newParentId: TaskId? = savedStateHandle.get<String>(NavArgs.PARENT)?.let { TaskId(it) }
 
     /** The task as loaded, to tell unchanged fields from edited ones. */
     private var loaded: Loaded? = null
@@ -125,6 +148,11 @@ class TaskEditorViewModel @Inject constructor(
             observeCategories().collect { categories -> state.update { it.copy(categories = categories) } }
         }
         if (taskId != null) viewModelScope.launch { load(taskId) }
+        if (newParentId != null) viewModelScope.launch { showParent(newParentId) }
+    }
+
+    private suspend fun showParent(id: TaskId) {
+        getTask(id).onSuccess { parent -> state.update { it.copy(parentTitle = parent.title, categoryId = parent.categoryId) } }
     }
 
     private suspend fun load(id: TaskId) {
@@ -144,7 +172,16 @@ class TaskEditorViewModel @Inject constructor(
                         date = local?.toLocalDate(),
                         time = loadedTime,
                         reminder = task.reminder,
+                        canAddSubTasks = task.isOpen && !task.isSubTask,
                     )
+                }
+                val parentId = task.parentId
+                if (parentId != null) {
+                    viewModelScope.launch { showParent(parentId) }
+                } else {
+                    viewModelScope.launch {
+                        observeSubTasks(id).collect { children -> state.update { it.copy(subTasks = children) } }
+                    }
                 }
             },
             onFailure = { error -> state.update { it.copy(isLoading = false, error = error.asDomainError()) } },
@@ -198,7 +235,19 @@ class TaskEditorViewModel @Inject constructor(
 
     override fun onReminderChange(reminder: Reminder) = edit { it.copy(reminder = reminder, error = null) }
 
-    override fun onSave() {
+    override fun onSave() = save(addAnother = false)
+
+    override fun onSaveAndAddAnother() = save(addAnother = true)
+
+    override fun onAddedShown() = state.update { it.copy(justAdded = null) }
+
+    override fun onSeveralAtOnceChange(enabled: Boolean) = state.update {
+        // Back to one task: the lines become one title rather than being lost.
+        val title = if (enabled) it.title else it.newTitles.joinToString(" ")
+        it.copy(severalAtOnce = enabled, title = title, description = if (enabled) "" else it.description, error = null)
+    }
+
+    private fun save(addAnother: Boolean) {
         val current = state.value
         if (current.isSaving) return
         val deadline = deadlineOf(current)
@@ -207,13 +256,37 @@ class TaskEditorViewModel @Inject constructor(
         state.update { it.copy(isSaving = true, error = null) }
 
         viewModelScope.launch {
-            val result = if (taskId == null) {
-                addTask(AddTask.Params(current.title, current.description, current.priority, current.categoryId, deadline, reminder))
-            } else {
-                updateTask(UpdateTask.Params(taskId, current.title, current.description, current.priority, current.categoryId, deadline, reminder))
+            val result: Result<Int> = when {
+                taskId != null ->
+                    updateTask(UpdateTask.Params(taskId, current.title, current.description, current.priority, current.categoryId, deadline, reminder))
+                        .map { 1 }
+                current.severalAtOnce ->
+                    addTasks(AddTasks.Params(current.newTitles, current.priority, current.categoryId, deadline, reminder, newParentId))
+                        .map { it.size }
+                else ->
+                    addTask(AddTask.Params(current.title, current.description, current.priority, current.categoryId, deadline, reminder, newParentId))
+                        .map { 1 }
             }
             result.fold(
-                onSuccess = { state.update { it.copy(isSaving = false, isFinished = true) } },
+                onSuccess = { count ->
+                    if (addAnother && taskId == null) {
+                        // Ready for the next one: same priority and category, a fresh title and deadline.
+                        edit {
+                            it.copy(
+                                isSaving = false,
+                                title = "",
+                                description = "",
+                                hasDeadline = false,
+                                date = null,
+                                time = TaskEditorUiState.DEFAULT_TIME,
+                                reminder = Reminder.None,
+                                justAdded = count,
+                            )
+                        }
+                    } else {
+                        state.update { it.copy(isSaving = false, isFinished = true) }
+                    }
+                },
                 onFailure = { error -> state.update { it.copy(isSaving = false, error = error.asDomainError()) } },
             )
         }

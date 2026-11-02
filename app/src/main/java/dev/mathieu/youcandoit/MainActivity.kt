@@ -4,6 +4,7 @@ import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -15,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.mathieu.youcandoit.settings.AppearanceViewModel
@@ -47,13 +49,25 @@ class MainActivity : ComponentActivity() {
             val showWelcome by welcome.showWelcome.collectAsStateWithLifecycle()
 
             TodoTheme(darkTheme = darkTheme) {
-                when (showWelcome) {
+                when (val show = showWelcome) {
                     null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) // loading, a split second
-                    true -> WelcomeScreen(onStart = welcome::onStart)
-                    false -> TodoApp()
+                    else -> Box(Modifier.fillMaxSize()) {
+                        // The welcome covers the app rather than replacing it: shown again on a new day,
+                        // it must not lose the screen the user was on (or the task a reminder opened).
+                        Box(if (show) Modifier.clearAndSetSemantics {} else Modifier) { TodoApp(onShowWelcome = welcome::onShowAgain) }
+                        if (show) {
+                            BackHandler(onBack = welcome::onStart)
+                            WelcomeScreen(onStart = welcome::onStart)
+                        }
+                    }
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        welcome.onAppVisible()
     }
 
     private companion object {

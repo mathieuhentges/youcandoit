@@ -16,7 +16,7 @@ data class PriorityStyle(val dot: Color, val container: Color, val content: Colo
 private val LIGHT = mapOf(
     Priority.URGENT to PriorityStyle(Color(0xFFD93025), Color(0xFFFCE8E6), Color(0xFFA50E0E)),
     Priority.HIGH to PriorityStyle(Color(0xFFF57C00), Color(0xFFFEEFE3), Color(0xFF8F4400)),
-    Priority.MEDIUM to PriorityStyle(Color(0xFFE0A100), Color(0xFFFEF7E0), Color(0xFF6F5200)),
+    Priority.MEDIUM to PriorityStyle(Color(0xFF00ACC1), Color(0xFFE0F7FA), Color(0xFF006064)),
     Priority.LOW to PriorityStyle(Color(0xFF4285F4), Color(0xFFE8F0FE), Color(0xFF174EA6)),
     Priority.MINIMAL to PriorityStyle(Color(0xFF9AA0A6), Color(0xFFF1F3F4), Color(0xFF45494E)),
 )
@@ -24,7 +24,7 @@ private val LIGHT = mapOf(
 private val DARK = mapOf(
     Priority.URGENT to PriorityStyle(Color(0xFFF28B82), Color(0xFF5C1A15), Color(0xFFFFDAD6)),
     Priority.HIGH to PriorityStyle(Color(0xFFFFB74D), Color(0xFF552D00), Color(0xFFFFDCC2)),
-    Priority.MEDIUM to PriorityStyle(Color(0xFFFDD663), Color(0xFF4A3B00), Color(0xFFFFF0C2)),
+    Priority.MEDIUM to PriorityStyle(Color(0xFF4DD0E1), Color(0xFF003C44), Color(0xFFB2EBF2)),
     Priority.LOW to PriorityStyle(Color(0xFF8AB4F8), Color(0xFF0B2E66), Color(0xFFD3E3FD)),
     Priority.MINIMAL to PriorityStyle(Color(0xFFBDC1C6), Color(0xFF3A3D41), Color(0xFFE3E5E8)),
 )

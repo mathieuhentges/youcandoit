@@ -35,6 +35,7 @@ internal fun Task.toEntity(): TaskEntity {
         doneAt = doneAt?.toEpochMilli(),
         archivedAt = archivedAt?.toEpochMilli(),
         position = position,
+        parentId = parentId?.value,
     )
 }
 
@@ -49,6 +50,7 @@ internal fun TaskEntity.toDomain(): Task = Task(
     createdAt = Instant.ofEpochMilli(createdAt),
     status = statusFrom(doneAt, archivedAt),
     position = position,
+    parentId = parentId?.let { TaskId(it) },
 )
 
 internal fun statusFrom(doneAt: Long?, archivedAt: Long?): TaskStatus = when {

@@ -39,7 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.mathieu.youcandoit.R
 
-/** Shown once, the very first time the app opens. */
+/** Shown the first time the app opens each day, over the app. Opaque: it blocks touches to what's below. */
 @Composable
 fun WelcomeScreen(onStart: () -> Unit) {
     // Content slides in gently once the screen is on.

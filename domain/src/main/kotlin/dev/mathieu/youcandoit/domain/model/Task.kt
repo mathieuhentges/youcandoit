@@ -12,9 +12,13 @@ data class Task(
     val reminder: Reminder,
     val createdAt: Instant,
     val status: TaskStatus,
-    /** Where the user dragged it: lower comes first. Only compared within one category. */
+    /** Where the user dragged it: lower comes first. Only compared among siblings (same category, same parent). */
     val position: Long,
+    /** Set for a sub task: one level only, always in its parent's category. */
+    val parentId: TaskId?,
 ) {
+    val isSubTask: Boolean get() = parentId != null
+
     val isOpen: Boolean get() = status == TaskStatus.Open
     val isDone: Boolean get() = status is TaskStatus.Done
     val isArchived: Boolean get() = status is TaskStatus.Archived

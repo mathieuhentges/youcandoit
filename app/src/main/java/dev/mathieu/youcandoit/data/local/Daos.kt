@@ -23,6 +23,10 @@ interface TaskDao {
     @Query("DELETE FROM tasks WHERE id = :id")
     suspend fun delete(id: String)
 
+    /** One statement, so all or nothing; sub tasks go too (ON DELETE CASCADE). */
+    @Query("DELETE FROM tasks WHERE id IN (:ids)")
+    suspend fun deleteAll(ids: List<String>)
+
     @Query("UPDATE tasks SET category_id = NULL WHERE category_id = :categoryId")
     suspend fun unassignCategory(categoryId: String)
 

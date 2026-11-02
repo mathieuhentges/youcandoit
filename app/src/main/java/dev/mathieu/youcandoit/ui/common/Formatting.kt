@@ -131,6 +131,7 @@ fun DomainError.userMessage(): String = when (this) {
     is DomainError.TaskNotFound -> stringResource(R.string.error_task_not_found)
     is DomainError.TaskArchived -> stringResource(R.string.error_task_archived)
     is DomainError.TaskNotDone -> stringResource(R.string.error_task_not_done)
+    is DomainError.SubTaskNotAllowed -> stringResource(R.string.error_sub_task_not_allowed)
     is DomainError.BlankCategoryName -> stringResource(R.string.error_blank_category)
     is DomainError.DuplicateCategoryName -> stringResource(R.string.error_duplicate_category, name)
 }
@@ -138,5 +139,6 @@ fun DomainError.userMessage(): String = when (this) {
 @Composable
 fun UserMessage.text(): String = when (this) {
     is UserMessage.Archived -> pluralStringResource(R.plurals.message_archived, count, count)
+    is UserMessage.Deleted -> pluralStringResource(R.plurals.message_deleted, count, count)
     is UserMessage.Error -> error.userMessage()
 }

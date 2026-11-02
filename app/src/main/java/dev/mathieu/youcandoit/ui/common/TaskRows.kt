@@ -1,9 +1,12 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
 package dev.mathieu.youcandoit.ui.common
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +19,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,6 +37,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -80,7 +86,10 @@ fun CategoryLabel.label(): String = when (this) {
     CategoryLabel.Uncategorized -> stringResource(R.string.title_uncategorized)
 }
 
-/** [dragHandle] is shown at the row's end, after the priority, where the list allows reordering. */
+/**
+ * [dragHandle] is shown at the row's end, after the priority, where the list allows reordering.
+ * A parent ([TaskItem.subTasks] set) gets an arrow to show or hide its sub tasks.
+ */
 @Composable
 fun OpenTaskRow(
     item: TaskItem,
@@ -88,9 +97,13 @@ fun OpenTaskRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     dragHandle: (@Composable () -> Unit)? = null,
+    expanded: Boolean = true,
+    onToggleExpanded: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+    selected: Boolean = false,
 ) {
     val task = item.task
-    Surface(onClick = onClick, shape = RowShape, color = MaterialTheme.colorScheme.surfaceContainerLowest, modifier = modifier.fillMaxWidth()) {
+    RowSurface(onClick = onClick, onLongClick = onLongClick, selected = selected, modifier = modifier) {
         Row(
             modifier = Modifier.heightIn(min = 64.dp).padding(start = 4.dp, end = if (dragHandle != null) 0.dp else 14.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -102,6 +115,15 @@ fun OpenTaskRow(
                 OpenTaskMeta(item)
             }
             PriorityChip(task.priority)
+            if (item.subTasks != null && onToggleExpanded != null) {
+                IconButton(onClick = onToggleExpanded) {
+                    Icon(
+                        if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = stringResource(if (expanded) R.string.action_hide_sub_tasks else R.string.action_show_sub_tasks),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             dragHandle?.invoke()
         }
     }
@@ -124,6 +146,9 @@ private fun OpenTaskMeta(item: TaskItem) {
             )
             else -> Text(formatDateTime(deadline), style = small, color = muted)
         }
+        item.subTasks?.let {
+            Text(stringResource(R.string.sub_task_count, it.done, it.total), style = small, color = muted, fontWeight = FontWeight.Medium)
+        }
         if (deadline != null && task.reminder != Reminder.None) {
             Icon(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.reminder_set), tint = muted, modifier = Modifier.size(14.dp))
         }
@@ -142,6 +167,8 @@ fun DoneTaskRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onArchive: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+    selected: Boolean = false,
 ) {
     val task = item.task
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
@@ -153,7 +180,7 @@ fun DoneTaskRow(
     } else {
         Modifier
     }
-    Surface(onClick = onClick, shape = RowShape, color = MaterialTheme.colorScheme.surfaceContainerLowest, modifier = modifier.fillMaxWidth().then(actions)) {
+    RowSurface(onClick = onClick, onLongClick = onLongClick, selected = selected, modifier = modifier.then(actions)) {
         Row(
             modifier = Modifier.heightIn(min = 56.dp).padding(start = 4.dp, end = 14.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -173,6 +200,29 @@ fun DoneTaskRow(
             }
         }
     }
+}
+
+/** A task row's card. [onLongClick] starts selection mode; a [selected] row is highlighted. */
+@Composable
+private fun RowSurface(
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
+    selected: Boolean,
+    modifier: Modifier,
+    content: @Composable () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        shape = RowShape,
+        color = if (selected) colors.secondaryContainer else colors.surfaceContainerLowest,
+        border = if (selected) BorderStroke(2.dp, colors.primary) else null,
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RowShape)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = stringResource(R.string.action_select))
+            .semantics { if (onLongClick != null) this.selected = selected },
+        content = content,
+    )
 }
 
 /** "Done Today, 14:32 · Work" */

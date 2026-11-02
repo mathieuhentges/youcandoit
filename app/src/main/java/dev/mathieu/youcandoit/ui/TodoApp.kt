@@ -45,14 +45,14 @@ private enum class Tab(val route: String, @StringRes val label: Int, val icon: I
 }
 
 @Composable
-fun TodoApp() {
+fun TodoApp(onShowWelcome: () -> Unit = {}) {
     CompositionLocalProvider(LocalToday provides rememberToday()) {
-        TodoNavigation()
+        TodoNavigation(onShowWelcome)
     }
 }
 
 @Composable
-private fun TodoNavigation() {
+private fun TodoNavigation(onShowWelcome: () -> Unit) {
     val nav = rememberNavController()
     val backStackEntry by nav.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route
@@ -97,6 +97,7 @@ private fun TodoNavigation() {
                     onAddTask = { nav.navigate(Routes.newTask(it)) },
                     onEditTask = { nav.navigate(Routes.editTask(it)) },
                     onBack = null,
+                    onShowWelcome = onShowWelcome,
                 )
             }
             composable(Routes.LISTS) {
@@ -123,16 +124,29 @@ private fun TodoNavigation() {
                         nullable = true
                         defaultValue = null
                     },
+                    navArgument(NavArgs.PARENT) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
                 ),
             ) {
-                TaskEditorScreen(onClose = { nav.popBackStack() })
+                TaskEditorScreen(
+                    onClose = { nav.popBackStack() },
+                    onAddSubTask = { nav.navigate(Routes.newSubTask(it)) },
+                    onEditTask = { nav.navigate(Routes.editTask(it)) },
+                )
             }
             composable(
                 Routes.EDIT_TASK,
                 arguments = listOf(navArgument(NavArgs.TASK_ID) { type = NavType.StringType }),
                 deepLinks = listOf(navDeepLink { uriPattern = DeepLinks.TASK_PATTERN }),
             ) {
-                TaskEditorScreen(onClose = { nav.popBackStack() })
+                TaskEditorScreen(
+                    onClose = { nav.popBackStack() },
+                    onAddSubTask = { nav.navigate(Routes.newSubTask(it)) },
+                    onEditTask = { nav.navigate(Routes.editTask(it)) },
+                )
             }
         }
     }

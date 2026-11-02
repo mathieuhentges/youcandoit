@@ -26,7 +26,9 @@ class FakeTaskRepository : TaskRepository {
     override suspend fun upsert(task: Task) = state.update { it + (task.id to task) }
     override suspend fun upsertAll(tasks: List<Task>) = state.update { current -> current + tasks.associateBy { it.id } }
     override suspend fun findById(id: TaskId): Task? = state.value[id]
-    override suspend fun delete(id: TaskId) = state.update { it - id }
+    /** Like the database's ON DELETE CASCADE: sub tasks go with their parent. */
+    override suspend fun delete(id: TaskId) = deleteAll(setOf(id))
+    override suspend fun deleteAll(ids: Set<TaskId>) = state.update { tasks -> tasks.filterValues { it.id !in ids && it.parentId !in ids } }
     override suspend fun unassignCategory(categoryId: CategoryId) = state.update { tasks ->
         tasks.mapValues { (_, task) -> if (task.categoryId == categoryId) task.copy(categoryId = null) else task }
     }

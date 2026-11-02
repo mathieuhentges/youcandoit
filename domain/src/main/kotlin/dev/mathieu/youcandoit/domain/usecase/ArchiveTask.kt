@@ -9,7 +9,7 @@ import java.time.Clock
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 
-/** Swipe-to-archive on a single done task. */
+/** Swipe-to-archive on a single done task, with its done sub tasks. */
 class ArchiveTask @Inject constructor(
     private val tasks: TaskRepository,
     private val clock: Clock,
@@ -19,8 +19,10 @@ class ArchiveTask @Inject constructor(
         if (task.isArchived) return Result.success(task)
         if (task.isOpen) return Result.failure(DomainError.TaskNotDone(id))
 
-        val archived = task.archive(clock.instant())
-        tasks.upsert(archived)
+        val now = clock.instant()
+        val archived = task.archive(now)
+        val children = tasks.subTasksOf(id).filter { it.isDone }.map { it.archive(now) }
+        tasks.upsertAll(listOf(archived) + children)
         return Result.success(archived)
     }
 }
@@ -40,7 +42,10 @@ class ArchiveDoneTasks @Inject constructor(
     }
 }
 
-/** Brings an archived task back to its list as done. */
+/**
+ * Brings an archived task back to its list as done: a parent with its archived sub tasks, a sub task
+ * with its archived parent (it needs one to show under).
+ */
 class RestoreTask @Inject constructor(
     private val tasks: TaskRepository,
 ) {
@@ -49,7 +54,9 @@ class RestoreTask @Inject constructor(
         if (!task.isArchived) return Result.success(task)
 
         val restored = task.restore()
-        tasks.upsert(restored)
+        val parent = task.parentId?.let { tasks.findById(it) }?.takeIf { it.isArchived }?.restore()
+        val children = if (task.isSubTask) emptyList() else tasks.subTasksOf(id).filter { it.isArchived }.map { it.restore() }
+        tasks.upsertAll(listOfNotNull(restored, parent) + children)
         return Result.success(restored)
     }
 }

@@ -4,11 +4,13 @@ import androidx.lifecycle.SavedStateHandle
 import dev.mathieu.youcandoit.domain.fakes.SequentialIds
 import dev.mathieu.youcandoit.domain.fakes.TestEnv
 import dev.mathieu.youcandoit.domain.usecase.AddTask
+import dev.mathieu.youcandoit.domain.usecase.AddTasks
 import dev.mathieu.youcandoit.domain.usecase.CreateCategory
 import dev.mathieu.youcandoit.domain.usecase.DeleteCategory
 import dev.mathieu.youcandoit.domain.usecase.DeleteTask
 import dev.mathieu.youcandoit.domain.usecase.GetTask
 import dev.mathieu.youcandoit.domain.usecase.ObserveCategories
+import dev.mathieu.youcandoit.domain.usecase.ObserveSubTasks
 import dev.mathieu.youcandoit.domain.usecase.ObserveListsOverview
 import dev.mathieu.youcandoit.domain.usecase.RenameCategory
 import dev.mathieu.youcandoit.domain.usecase.UpdateTask
@@ -63,9 +65,11 @@ class DoubleTapTest {
             observeCategories = ObserveCategories(env.categories),
             getTask = GetTask(env.tasks),
             addTask = AddTask(env.tasks, env.categories, env.reminders, env.clock, SequentialIds("task")),
+            addTasks = AddTasks(env.tasks, env.categories, env.reminders, env.clock, SequentialIds("tasks")),
             updateTask = UpdateTask(env.tasks, env.categories, env.reminders, env.clock),
             deleteTask = DeleteTask(env.tasks, env.reminders),
             createCategory = CreateCategory(env.categories, env.clock, SequentialIds("cat")),
+            observeSubTasks = ObserveSubTasks(env.tasks),
             clock = env.clock,
             zone = ZoneId.of("America/Montreal"),
         )

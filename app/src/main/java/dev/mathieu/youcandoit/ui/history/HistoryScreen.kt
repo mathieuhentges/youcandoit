@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,26 +20,36 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.mathieu.youcandoit.R
+import dev.mathieu.youcandoit.domain.model.HistoryOrder
 import dev.mathieu.youcandoit.domain.model.Priority
 import dev.mathieu.youcandoit.domain.model.ProgressStats
 import dev.mathieu.youcandoit.domain.model.StatsPeriod
@@ -60,11 +72,21 @@ import dev.mathieu.youcandoit.ui.common.style
 @Composable
 fun HistoryScreen(viewModel: HistoryViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HistoryContent(state = state, onPeriodSelected = viewModel::onPeriodSelected, onRestore = viewModel::onRestore)
+    HistoryContent(
+        state = state,
+        onPeriodSelected = viewModel::onPeriodSelected,
+        onRestore = viewModel::onRestore,
+        onOrderSelected = viewModel::onOrderSelected,
+    )
 }
 
 @Composable
-fun HistoryContent(state: HistoryUiState, onPeriodSelected: (StatsPeriod) -> Unit, onRestore: (TaskId) -> Unit) {
+fun HistoryContent(
+    state: HistoryUiState,
+    onPeriodSelected: (StatsPeriod) -> Unit,
+    onRestore: (TaskId) -> Unit,
+    onOrderSelected: (HistoryOrder) -> Unit,
+) {
     Scaffold { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -102,12 +124,15 @@ fun HistoryContent(state: HistoryUiState, onPeriodSelected: (StatsPeriod) -> Uni
                 item(key = "bars") { PriorityBars(stats) }
             }
             item(key = "archived-header") {
-                Text(
-                    stringResource(R.string.history_archived),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, top = 8.dp),
-                )
+                Row(Modifier.padding(start = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.history_archived),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OrderMenu(order = state.order, onOrderSelected = onOrderSelected)
+                }
             }
             if (!state.isLoading && state.archived.isEmpty()) {
                 item(key = "empty") {
@@ -124,6 +149,38 @@ fun HistoryContent(state: HistoryUiState, onPeriodSelected: (StatsPeriod) -> Uni
             }
         }
     }
+}
+
+@Composable
+private fun OrderMenu(order: HistoryOrder, onOrderSelected: (HistoryOrder) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { open = true }) {
+            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(order.labelRes()))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            HistoryOrder.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(option.labelRes())) },
+                    leadingIcon = { RadioButton(selected = option == order, onClick = null) },
+                    onClick = {
+                        onOrderSelected(option)
+                        open = false
+                    },
+                    modifier = Modifier.semantics { selected = option == order },
+                )
+            }
+        }
+    }
+}
+
+private fun HistoryOrder.labelRes(): Int = when (this) {
+    HistoryOrder.RECENTLY_ARCHIVED -> R.string.sort_recently_archived
+    HistoryOrder.RECENTLY_DONE -> R.string.sort_recently_done
+    HistoryOrder.PRIORITY -> R.string.sort_priority
+    HistoryOrder.CATEGORY -> R.string.sort_category
 }
 
 @Composable
