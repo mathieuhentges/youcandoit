@@ -1,10 +1,15 @@
 package dev.mathieu.youcandoit.settings
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import dev.mathieu.youcandoit.domain.model.DoneOrder
+import dev.mathieu.youcandoit.domain.model.HistoryOrder
+import dev.mathieu.youcandoit.domain.model.TaskOrder
 import dev.mathieu.youcandoit.ui.MainDispatcherRule
 import java.io.File
+import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -38,13 +43,54 @@ class SettingsTest {
     }
 
     @Test
-    fun `the welcome screen is remembered once seen`() = runTest {
+    fun `the day the welcome screen was seen is remembered`() = runTest {
         val settings = repository()
-        assertFalse(settings.welcomeSeen.first())
+        assertNull(settings.welcomeSeenOn.first())
 
-        settings.markWelcomeSeen()
+        settings.markWelcomeSeen(LocalDate.of(2026, 11, 2))
 
-        assertTrue(settings.welcomeSeen.first())
+        assertEquals(LocalDate.of(2026, 11, 2), settings.welcomeSeenOn.first())
+    }
+
+    @Test
+    fun `the day an update was declined is remembered`() = runTest {
+        val settings = repository()
+        assertNull(settings.updateDeclinedOn.first())
+
+        settings.markUpdateDeclined(LocalDate.of(2026, 11, 6))
+
+        assertEquals(LocalDate.of(2026, 11, 6), settings.updateDeclinedOn.first())
+    }
+
+    @Test
+    fun `the list sort starts as my order with headers and is remembered`() = runTest {
+        val settings = repository()
+        assertEquals(ListSort(TaskOrder.MY_ORDER, groupByCategory = true), settings.listSort.first())
+
+        settings.setListSort(ListSort(TaskOrder.DEADLINE, groupByCategory = false, doneOrder = DoneOrder.CATEGORY))
+
+        assertEquals(ListSort(TaskOrder.DEADLINE, groupByCategory = false, doneOrder = DoneOrder.CATEGORY), settings.listSort.first())
+    }
+
+    @Test
+    fun `the history order starts as recently archived and is remembered`() = runTest {
+        val settings = repository()
+        assertEquals(HistoryOrder.RECENTLY_ARCHIVED, settings.historyOrder.first())
+
+        settings.setHistoryOrder(HistoryOrder.CATEGORY)
+
+        assertEquals(HistoryOrder.CATEGORY, settings.historyOrder.first())
+    }
+
+    @Test
+    fun `my order always has headers and is the only draggable order`() {
+        assertTrue(ListSort(TaskOrder.MY_ORDER, groupByCategory = false).isGrouped)
+        assertFalse(ListSort(TaskOrder.PRIORITY, groupByCategory = false).isGrouped)
+        assertEquals(listOf(true, false, false, false), TaskOrder.entries.map { ListSort(it).canDrag })
+        TaskOrder.entries.forEach { assertEquals(it, ListSort.orderFromKey(ListSort.keyOf(it))) }
+        assertEquals(TaskOrder.MY_ORDER, ListSort.orderFromKey("alphabetical"))
+        DoneOrder.entries.forEach { assertEquals(it, ListSort.doneOrderFromKey(ListSort.keyOf(it))) }
+        assertEquals(DoneOrder.RECENTLY_DONE, ListSort.doneOrderFromKey(null))
     }
 
     @Test
@@ -75,13 +121,31 @@ class SettingsTest {
 
 class FakeSettings : SettingsRepository {
     override val theme = MutableStateFlow(ThemePreference.SYSTEM)
-    override val welcomeSeen = MutableStateFlow(false)
+    override val welcomeSeenOn = MutableStateFlow<LocalDate?>(null)
 
     override suspend fun setTheme(theme: ThemePreference) {
         this.theme.value = theme
     }
 
-    override suspend fun markWelcomeSeen() {
-        welcomeSeen.value = true
+    override suspend fun markWelcomeSeen(on: LocalDate) {
+        welcomeSeenOn.value = on
+    }
+
+    override val listSort = MutableStateFlow(ListSort())
+
+    override suspend fun setListSort(sort: ListSort) {
+        listSort.value = sort
+    }
+
+    override val historyOrder = MutableStateFlow(HistoryOrder.RECENTLY_ARCHIVED)
+
+    override suspend fun setHistoryOrder(order: HistoryOrder) {
+        historyOrder.value = order
+    }
+
+    override val updateDeclinedOn = MutableStateFlow<LocalDate?>(null)
+
+    override suspend fun markUpdateDeclined(on: LocalDate) {
+        updateDeclinedOn.value = on
     }
 }

@@ -23,13 +23,13 @@ android {
 
     defaultConfig {
         // Permanent once uploaded to Google Play. The display name (app_name) can change freely.
-        applicationId = "dev.mathieu.youcandoit"
+        applicationId = "mathieu.dev.youcandoit"
         minSdk = 26
         // Google Play requires API 36 for new apps and updates since 2026-08-31.
         targetSdk = 36
         // Bump versionCode by 1 for every upload to Play; versionName is what testers see.
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
     }
 
     signingConfigs {
@@ -99,6 +99,7 @@ dependencies {
     implementation(libs.compose.material.icons.core)
     implementation(libs.compose.material.icons.extended) // R8 strips the unused icons in release
     implementation(libs.reorderable)
+    implementation(libs.play.app.update.ktx)
     debugImplementation(libs.compose.ui.tooling)
 
     implementation(libs.hilt.android)

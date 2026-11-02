@@ -111,6 +111,7 @@ fun reminderLabel(reminder: Reminder): String = when (reminder) {
             else -> stringResource(R.string.reminder_minutes_before, minutes)
         }
     }
+    is Reminder.At -> formatDateTime(reminder.at)
 }
 
 @Composable
@@ -127,10 +128,13 @@ fun DomainError.userMessage(): String = when (this) {
     is DomainError.BlankTitle -> stringResource(R.string.error_blank_title)
     is DomainError.DeadlineNotInFuture -> stringResource(R.string.error_deadline_past)
     is DomainError.ReminderWithoutDeadline -> stringResource(R.string.error_reminder_without_deadline)
+    is DomainError.ReminderNotInFuture -> stringResource(R.string.error_reminder_past)
     is DomainError.CategoryNotFound -> stringResource(R.string.error_category_not_found)
     is DomainError.TaskNotFound -> stringResource(R.string.error_task_not_found)
     is DomainError.TaskArchived -> stringResource(R.string.error_task_archived)
     is DomainError.TaskNotDone -> stringResource(R.string.error_task_not_done)
+    is DomainError.SubTaskNotAllowed -> stringResource(R.string.error_sub_task_not_allowed)
+    is DomainError.HasSubTasks -> stringResource(R.string.error_has_sub_tasks)
     is DomainError.BlankCategoryName -> stringResource(R.string.error_blank_category)
     is DomainError.DuplicateCategoryName -> stringResource(R.string.error_duplicate_category, name)
 }
@@ -138,5 +142,6 @@ fun DomainError.userMessage(): String = when (this) {
 @Composable
 fun UserMessage.text(): String = when (this) {
     is UserMessage.Archived -> pluralStringResource(R.plurals.message_archived, count, count)
+    is UserMessage.Deleted -> pluralStringResource(R.plurals.message_deleted, count, count)
     is UserMessage.Error -> error.userMessage()
 }

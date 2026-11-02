@@ -12,10 +12,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -29,6 +35,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import dev.mathieu.youcandoit.DeepLinks
 import dev.mathieu.youcandoit.R
+import dev.mathieu.youcandoit.ui.about.AboutScreen
 import dev.mathieu.youcandoit.ui.common.LocalToday
 import dev.mathieu.youcandoit.ui.common.rememberToday
 import dev.mathieu.youcandoit.ui.editor.TaskEditorScreen
@@ -45,14 +52,24 @@ private enum class Tab(val route: String, @StringRes val label: Int, val icon: I
 }
 
 @Composable
-fun TodoApp() {
+fun TodoApp(
+    onShowWelcome: () -> Unit = {},
+    updateReady: Boolean = false,
+    onRestartToUpdate: () -> Unit = {},
+    onUpdateLater: () -> Unit = {},
+) {
     CompositionLocalProvider(LocalToday provides rememberToday()) {
-        TodoNavigation()
+        TodoNavigation(onShowWelcome, updateReady, onRestartToUpdate, onUpdateLater)
     }
 }
 
 @Composable
-private fun TodoNavigation() {
+private fun TodoNavigation(
+    onShowWelcome: () -> Unit,
+    updateReady: Boolean,
+    onRestartToUpdate: () -> Unit,
+    onUpdateLater: () -> Unit,
+) {
     val nav = rememberNavController()
     val backStackEntry by nav.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route
@@ -63,9 +80,19 @@ private fun TodoNavigation() {
         else -> null
     }
 
+    val snackbar = remember { SnackbarHostState() }
+    val updateMessage = stringResource(R.string.update_ready)
+    val restartLabel = stringResource(R.string.action_restart)
+    LaunchedEffect(updateReady) {
+        if (!updateReady) return@LaunchedEffect
+        val result = snackbar.showSnackbar(updateMessage, actionLabel = restartLabel, withDismissAction = true, duration = SnackbarDuration.Indefinite)
+        if (result == SnackbarResult.ActionPerformed) onRestartToUpdate() else onUpdateLater()
+    }
+
     Scaffold(
         // Each screen has its own Scaffold and handles the system bars itself.
         contentWindowInsets = WindowInsets(0),
+        snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             if (currentTab != null) {
                 NavigationBar {
@@ -97,6 +124,8 @@ private fun TodoNavigation() {
                     onAddTask = { nav.navigate(Routes.newTask(it)) },
                     onEditTask = { nav.navigate(Routes.editTask(it)) },
                     onBack = null,
+                    onShowWelcome = onShowWelcome,
+                    onOpenAbout = { nav.navigate(Routes.ABOUT) },
                 )
             }
             composable(Routes.LISTS) {
@@ -115,6 +144,9 @@ private fun TodoNavigation() {
             composable(Routes.HISTORY) {
                 HistoryScreen()
             }
+            composable(Routes.ABOUT) {
+                AboutScreen(onBack = { nav.popBackStack() })
+            }
             composable(
                 Routes.NEW_TASK,
                 arguments = listOf(
@@ -123,16 +155,29 @@ private fun TodoNavigation() {
                         nullable = true
                         defaultValue = null
                     },
+                    navArgument(NavArgs.PARENT) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
                 ),
             ) {
-                TaskEditorScreen(onClose = { nav.popBackStack() })
+                TaskEditorScreen(
+                    onClose = { nav.popBackStack() },
+                    onAddSubTask = { nav.navigate(Routes.newSubTask(it)) },
+                    onEditTask = { nav.navigate(Routes.editTask(it)) },
+                )
             }
             composable(
                 Routes.EDIT_TASK,
                 arguments = listOf(navArgument(NavArgs.TASK_ID) { type = NavType.StringType }),
                 deepLinks = listOf(navDeepLink { uriPattern = DeepLinks.TASK_PATTERN }),
             ) {
-                TaskEditorScreen(onClose = { nav.popBackStack() })
+                TaskEditorScreen(
+                    onClose = { nav.popBackStack() },
+                    onAddSubTask = { nav.navigate(Routes.newSubTask(it)) },
+                    onEditTask = { nav.navigate(Routes.editTask(it)) },
+                )
             }
         }
     }

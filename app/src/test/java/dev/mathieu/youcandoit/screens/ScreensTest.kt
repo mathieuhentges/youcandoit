@@ -6,36 +6,58 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import kotlin.test.assertTrue
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
 import dev.mathieu.youcandoit.domain.fakes.NOW
 import dev.mathieu.youcandoit.domain.fakes.aTask
 import dev.mathieu.youcandoit.domain.model.CategoryId
+import dev.mathieu.youcandoit.domain.model.DoneOrder
+import dev.mathieu.youcandoit.domain.model.HistoryOrder
 import dev.mathieu.youcandoit.domain.model.Priority
 import dev.mathieu.youcandoit.domain.model.Reminder
+import dev.mathieu.youcandoit.domain.model.TaskId
+import dev.mathieu.youcandoit.domain.model.TaskList
+import dev.mathieu.youcandoit.domain.model.TaskOrder
 import dev.mathieu.youcandoit.settings.AppearanceDialogContent
+import dev.mathieu.youcandoit.settings.ListSort
 import dev.mathieu.youcandoit.settings.ThemePreference
+import dev.mathieu.youcandoit.ui.about.AboutContent
 import dev.mathieu.youcandoit.ui.common.CategoryLabel
+import dev.mathieu.youcandoit.ui.common.SubTaskCount
 import dev.mathieu.youcandoit.ui.common.TaskItem
 import dev.mathieu.youcandoit.ui.editor.TaskEditorActions
 import dev.mathieu.youcandoit.ui.editor.TaskEditorContent
 import dev.mathieu.youcandoit.ui.editor.TaskEditorUiState
+import dev.mathieu.youcandoit.ui.history.HistoryContent
+import dev.mathieu.youcandoit.ui.history.HistoryUiState
 import dev.mathieu.youcandoit.ui.tasks.ListTitle
 import dev.mathieu.youcandoit.ui.tasks.TaskGroup
 import dev.mathieu.youcandoit.ui.tasks.TaskListContent
 import dev.mathieu.youcandoit.ui.tasks.TaskListUiState
+import dev.mathieu.youcandoit.ui.tasks.TaskSelectionActions
 import dev.mathieu.youcandoit.ui.theme.TodoTheme
 import dev.mathieu.youcandoit.ui.welcome.WelcomeScreen
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.test.assertEquals
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.dp
+import kotlin.test.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -149,6 +171,319 @@ class ScreensTest {
     }
 
     @Test
+    fun `the done section has its own sort menu, offering Category only on Home`() {
+        var sort by mutableStateOf(ListSort())
+        var list by mutableStateOf<TaskList>(TaskList.All)
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = TaskListUiState(isLoading = false, list = list, done = listOf(item("b", done = true)), sort = sort),
+                    onAddTask = {},
+                    onEditTask = {},
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                    onSortChange = { sort = it },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Sort done tasks").performClick()
+        compose.onNodeWithText("Category").performClick()
+        assertEquals(ListSort(doneOrder = DoneOrder.CATEGORY), sort)
+
+        list = TaskList.Uncategorized
+        compose.onNodeWithContentDescription("Sort done tasks").performClick()
+        compose.onNodeWithText("Category").assertDoesNotExist()
+        compose.onNodeWithText("Recently done").assertIsSelected()
+    }
+
+    @Test
+    fun `history's sort menu shows the current order and reports a new one`() {
+        var chosen: HistoryOrder? = null
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                HistoryContent(
+                    state = HistoryUiState(isLoading = false, order = HistoryOrder.RECENTLY_ARCHIVED),
+                    onPeriodSelected = {},
+                    onRestore = {},
+                    onOrderSelected = { chosen = it },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Recently archived").performClick()
+        compose.onNodeWithText("Category").performClick()
+
+        assertEquals(HistoryOrder.CATEGORY, chosen)
+    }
+
+    @Test
+    fun `home has a button that brings the encouragement back`() {
+        var asked = 0
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = TaskListUiState(isLoading = false),
+                    onAddTask = {},
+                    onEditTask = {},
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                    onShowWelcome = { asked++ },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Show the encouragement again").performClick()
+
+        assertEquals(1, asked)
+    }
+
+    @Test
+    fun `home's menu holds appearance, the encouragement and about, and opens about`() {
+        var opened = 0
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = TaskListUiState(isLoading = false),
+                    onAddTask = {},
+                    onEditTask = {},
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                    onOpenAppearance = {},
+                    onShowWelcome = {},
+                    onOpenAbout = { opened++ },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Appearance").assertIsDisplayed()
+        compose.onNodeWithText("Show the encouragement again").assertIsDisplayed()
+        compose.onNodeWithText("About & contact").performClick()
+
+        assertEquals(1, opened)
+    }
+
+    @Test
+    fun `about shows the version and the contact address, and reports its buttons`() {
+        var feedback = 0
+        var privacy = 0
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                AboutContent(version = "0.1.0", onBack = {}, onSendFeedback = { feedback++ }, onOpenPrivacyPolicy = { privacy++ })
+            }
+        }
+
+        compose.onNodeWithText("Version 0.1.0").assertIsDisplayed()
+        compose.onNodeWithText("mathieuhentges+todoapp@gmail.com").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Send feedback").performScrollTo().performClick()
+        compose.onNodeWithText("Privacy policy").performScrollTo().performClick()
+
+        assertEquals(1, feedback)
+        assertEquals(1, privacy)
+    }
+
+    @Test
+    fun `the sort menu reports a new order, and only my order offers drag handles`() {
+        var sort by mutableStateOf(ListSort())
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = TaskListUiState(
+                        isLoading = false,
+                        groups = listOf(TaskGroup(null, CategoryLabel.Uncategorized, listOf(item("a")))),
+                        sort = sort,
+                    ),
+                    onAddTask = {},
+                    onEditTask = {},
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                    onSortChange = { sort = it },
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Drag to reorder: Task a").assertIsDisplayed()
+
+        compose.onNodeWithContentDescription("Sort").performClick()
+        compose.onNodeWithText("Priority").performClick()
+
+        assertEquals(TaskOrder.PRIORITY, sort.order)
+        compose.onNodeWithContentDescription("Drag to reorder: Task a").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a parent shows its sub tasks and done count, collapses, and asks before ticking them all`() {
+        var confirmed = false
+        val parent = item("p").copy(subTasks = SubTaskCount(done = 1, total = 2))
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = TaskListUiState(
+                        isLoading = false,
+                        groups = listOf(TaskGroup(null, CategoryLabel.Uncategorized, listOf(parent))),
+                        subTasks = mapOf(TaskId("p") to listOf(item("c1"), item("c2", done = true))),
+                        confirmDone = parent,
+                    ),
+                    onAddTask = {},
+                    onEditTask = {},
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                    onConfirmDone = { confirmed = true },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Mark all done?").assertIsDisplayed()
+        compose.onNodeWithText("Its open sub task will be marked done too.").assertIsDisplayed()
+        compose.onNodeWithText("Mark all done").performClick()
+        assertEquals(true, confirmed)
+    }
+
+    @Test
+    fun `a done parent keeps its sub tasks visible under it in the done section`() {
+        val parent = item("p", done = true).copy(subTasks = SubTaskCount(done = 1, total = 1))
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = TaskListUiState(
+                        isLoading = false,
+                        done = listOf(parent),
+                        subTasks = mapOf(TaskId("p") to listOf(item("c", done = true))),
+                    ),
+                    onAddTask = {},
+                    onEditTask = {},
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("Task p").assertIsDisplayed()
+        compose.onNodeWithText("Task c").assertIsDisplayed()
+    }
+
+    @Test
+    fun `save and add another confirms with a snackbar`() {
+        var state by mutableStateOf(TaskEditorUiState())
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskEditorContent(state = state, actions = RecordingActions(onAddedShown = { state = state.copy(justAdded = null) }), onClose = {})
+            }
+        }
+
+        compose.runOnIdle { state = state.copy(justAdded = 1) }
+
+        compose.onNodeWithText("1 task added").assertIsDisplayed()
+    }
+
+    @Test
+    fun `sub tasks can be hidden under their parent`() {
+        val parent = item("p").copy(subTasks = SubTaskCount(done = 0, total = 1))
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = TaskListUiState(
+                        isLoading = false,
+                        groups = listOf(TaskGroup(null, CategoryLabel.Uncategorized, listOf(parent))),
+                        subTasks = mapOf(TaskId("p") to listOf(item("c"))),
+                    ),
+                    onAddTask = {},
+                    onEditTask = {},
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("0/1").assertIsDisplayed()
+        compose.onNodeWithText("Task c").assertIsDisplayed()
+
+        compose.onNodeWithContentDescription("Hide sub tasks").performClick()
+
+        compose.onNodeWithText("Task c").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Show sub tasks").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a long press starts selection mode, where a tap selects instead of opening`() {
+        var state by mutableStateOf(
+            TaskListUiState(isLoading = false, groups = listOf(TaskGroup(null, CategoryLabel.Uncategorized, listOf(item("a"), item("b"))))),
+        )
+        val opened = mutableListOf<String>()
+        val selection = object : TaskSelectionActions by TaskSelectionActions.None {
+            override fun onToggleSelection(id: TaskId) {
+                state = state.copy(selected = if (id in state.selected) state.selected - id else state.selected + id)
+            }
+            override fun onSetSelectedPriority(priority: Priority) {
+                state = state.copy(selected = emptySet(), message = null)
+                opened += "priority:" + priority.name
+            }
+        }
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = state,
+                    onAddTask = {},
+                    onEditTask = { opened += it.value },
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                    selection = selection,
+                )
+            }
+        }
+
+        compose.onNodeWithText("Task a").performTouchInput { longClick() }
+        compose.onNodeWithText("1 selected").assertIsDisplayed()
+        compose.onNodeWithText("Task b").performClick()
+        compose.onNodeWithText("2 selected").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Drag to reorder: Task a").assertDoesNotExist()
+
+        compose.onNodeWithContentDescription("Set priority").performClick()
+        compose.onNodeWithText("Urgent").performClick()
+
+        assertEquals(listOf("priority:URGENT"), opened)
+        compose.onNodeWithText("All tasks").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the priority picker runs from Minimal on the left to Urgent on the right`() {
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskEditorContent(state = TaskEditorUiState(), actions = RecordingActions(), onClose = {})
+            }
+        }
+
+        val lefts = listOf("Minimal", "Low", "Medium", "High", "Urgent")
+            .map { compose.onNodeWithText(it).getUnclippedBoundsInRoot().left }
+        assertEquals(lefts.sorted(), lefts)
+    }
+
+    @Test
     fun `save stays disabled until the task has a title`() {
         var saves = 0
         val actions = RecordingActions(onSave = { saves++ })
@@ -202,6 +537,159 @@ class ScreensTest {
         assertEquals(work to listOf("a", "b"), reordered)
     }
 
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun `a category can be collapsed, and a task moved under it goes on top of its hidden tasks`() {
+        val work = CategoryId("work")
+        var reordered: Pair<CategoryId?, List<String>>? = null
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = TaskListUiState(
+                        isLoading = false,
+                        groups = listOf(
+                            TaskGroup(work, CategoryLabel.Named("Work"), listOf(item("a1"), item("a2"))),
+                            TaskGroup(null, CategoryLabel.Uncategorized, listOf(item("b"))),
+                        ),
+                    ),
+                    onAddTask = {},
+                    onEditTask = {},
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                    onReorder = { category, ids -> reordered = category to ids.map { it.value } },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Work").performClick()
+        compose.onNodeWithText("Task a1").assertDoesNotExist()
+        compose.onNodeWithText("Work").assertTextContains("2", substring = true)
+
+        compose.onNodeWithText("Task b").performCustomAccessibilityActionWithLabel("Move up")
+        assertEquals(work to listOf("b", "a1", "a2"), reordered)
+
+        compose.onNodeWithText("Work").performClick()
+        compose.onNodeWithText("Task a1").assertIsDisplayed()
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun `a task can go under the one above it, and a sub task can come back out`() {
+        val parent = item("p").copy(subTasks = SubTaskCount(done = 0, total = 1))
+        var nested: Pair<String, String>? = null
+        var movedOut: String? = null
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = TaskListUiState(
+                        isLoading = false,
+                        groups = listOf(TaskGroup(null, label = null, listOf(item("a"), item("b"), parent))),
+                        subTasks = mapOf(TaskId("p") to listOf(item("c"))),
+                    ),
+                    onAddTask = {},
+                    onEditTask = {},
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                    onMakeSubTask = { id, parentId -> nested = id.value to parentId.value },
+                    onMoveOutOfParent = { movedOut = it.value },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Task b").performCustomAccessibilityActionWithLabel("Make sub task of “Task a”")
+        assertEquals("b" to "a", nested)
+
+        // One level only: a parent can't go under another task.
+        assertTrue(compose.onNodeWithText("Task p").fetchSemanticsNode().config[SemanticsActions.CustomActions].none { "sub task" in it.label })
+
+        compose.onNodeWithText("Task c").performCustomAccessibilityActionWithLabel("Move out of “Task p”")
+        assertEquals("c", movedOut)
+    }
+
+    private fun dragList(onReorder: (List<String>) -> Unit, onNest: (Pair<String, String>) -> Unit) = compose.setContent {
+        TodoTheme(dynamicColor = false) {
+            TaskListContent(
+                state = TaskListUiState(isLoading = false, groups = listOf(TaskGroup(null, label = null, listOf(item("a"), item("b"), item("c"))))),
+                onAddTask = {},
+                onEditTask = {},
+                onBack = null,
+                onToggleDone = {},
+                onArchive = {},
+                onArchiveDone = {},
+                onMessageShown = {},
+                onReorder = { _, ids -> onReorder(ids.map { it.value }) },
+                onMakeSubTask = { id, parentId -> onNest(id.value to parentId.value) },
+            )
+        }
+    }
+
+    @Test
+    fun `a long drag that drifts sideways only reorders, it doesn't nest`() {
+        var reordered: List<String>? = null
+        var nested: Pair<String, String>? = null
+        dragList({ reordered = it }, { nested = it })
+
+        // Down past two rows, drifting right well beyond the nesting distance on the way.
+        compose.onNodeWithContentDescription("Drag to reorder: Task a", useUnmergedTree = true).performTouchInput {
+            down(center)
+            repeat(60) {
+                moveBy(Offset(2.dp.toPx(), 4.dp.toPx()))
+                advanceEventTime(16)
+            }
+            up()
+        }
+        compose.waitForIdle()
+
+        assertEquals(listOf("b", "c", "a"), reordered)
+        assertNull(nested)
+    }
+
+    @Test
+    fun `a task put in place, then pushed right, goes under the task above`() {
+        var nested: Pair<String, String>? = null
+        dragList({}, { nested = it })
+
+        compose.onNodeWithContentDescription("Drag to reorder: Task c", useUnmergedTree = true).performTouchInput {
+            down(center)
+            repeat(20) {
+                moveBy(Offset(4.dp.toPx(), 0f))
+                advanceEventTime(16)
+            }
+            up()
+        }
+        compose.waitForIdle()
+
+        assertEquals("c" to "b", nested)
+    }
+
+    @Test
+    fun `editing a task offers the tasks it can go under, and hides the category once one is picked`() {
+        var parent: TaskId? = null
+        var state by mutableStateOf(
+            TaskEditorUiState(isEditing = true, title = "Book the van", parentChoices = listOf(aTask("p").copy(title = "Move house"))),
+        )
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskEditorContent(state = state, actions = RecordingActions(onParentChange = { parent = it }), onClose = {})
+            }
+        }
+
+        compose.onNodeWithText("Category").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("None (a main task)").performScrollTo().performClick()
+        compose.onNodeWithText("Move house").performClick()
+        assertEquals(TaskId("p"), parent)
+
+        state = state.copy(parentId = TaskId("p"), parentTitle = "Move house")
+        compose.onNodeWithText("Move house").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Category").assertDoesNotExist()
+    }
+
     @Test
     fun `the deadline section shows the date, time and reminder choices`() {
         compose.setContent {
@@ -226,6 +714,25 @@ class ScreensTest {
     }
 
     @Test
+    fun `without a deadline, a reminder can still be set on a chosen date, and the chip shows it`() {
+        var state by mutableStateOf(TaskEditorUiState(title = "Call"))
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskEditorContent(state = state, actions = RecordingActions(), onClose = {})
+            }
+        }
+
+        compose.onNodeWithText("None").performScrollTo().assertIsSelected()
+        compose.onNodeWithText("On a date…").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("At deadline").assertDoesNotExist()
+
+        state = state.copy(reminder = Reminder.At(NOW.plus(Duration.ofDays(1))))
+
+        compose.onNodeWithText("On a date…").assertDoesNotExist()
+        compose.onNodeWithText("None").assertIsNotSelected()
+    }
+
+    @Test
     fun `the appearance dialog marks the current choice and reports a new one`() {
         var picked: ThemePreference? = null
         compose.setContent {
@@ -241,15 +748,24 @@ class ScreensTest {
     }
 }
 
-private class RecordingActions(private val onSave: () -> Unit = {}) : TaskEditorActions {
+private class RecordingActions(
+    private val onSave: () -> Unit = {},
+    private val onAddedShown: () -> Unit = {},
+    private val onParentChange: (TaskId?) -> Unit = {},
+) : TaskEditorActions {
     override fun onTitleChange(title: String) = Unit
+    override fun onSaveAndAddAnother() = Unit
+    override fun onAddedShown() = onAddedShown.invoke()
+    override fun onSeveralAtOnceChange(enabled: Boolean) = Unit
     override fun onDescriptionChange(description: String) = Unit
     override fun onPriorityChange(priority: Priority) = Unit
     override fun onCategoryChange(categoryId: CategoryId?) = Unit
+    override fun onParentChange(parentId: TaskId?) = onParentChange.invoke(parentId)
     override fun onDeadlineToggle(enabled: Boolean) = Unit
     override fun onDateChange(date: LocalDate) = Unit
     override fun onTimeChange(time: LocalTime) = Unit
     override fun onReminderChange(reminder: Reminder) = Unit
+    override fun onReminderTimeChange(date: LocalDate, time: LocalTime) = Unit
     override fun onSave() = onSave.invoke()
     override fun onDelete() = Unit
     override fun onNewCategoryClick() = Unit

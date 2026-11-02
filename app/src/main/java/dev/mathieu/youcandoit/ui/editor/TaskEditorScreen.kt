@@ -22,12 +22,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -46,6 +49,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -59,15 +64,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -77,6 +87,8 @@ import dev.mathieu.youcandoit.domain.model.CategoryId
 import dev.mathieu.youcandoit.domain.model.DomainError
 import dev.mathieu.youcandoit.domain.model.Priority
 import dev.mathieu.youcandoit.domain.model.Reminder
+import dev.mathieu.youcandoit.domain.model.Task
+import dev.mathieu.youcandoit.domain.model.TaskId
 import dev.mathieu.youcandoit.ui.common.NameDialog
 import dev.mathieu.youcandoit.ui.common.formatDate
 import dev.mathieu.youcandoit.ui.common.formatTime
@@ -87,22 +99,53 @@ import dev.mathieu.youcandoit.ui.common.userMessage
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZoneOffset
+import kotlinx.coroutines.launch
 
 @Composable
-fun TaskEditorScreen(onClose: () -> Unit, viewModel: TaskEditorViewModel = hiltViewModel()) {
+fun TaskEditorScreen(
+    onClose: () -> Unit,
+    onAddSubTask: (TaskId) -> Unit = {},
+    onEditTask: (TaskId) -> Unit = {},
+    viewModel: TaskEditorViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.isFinished) {
         if (state.isFinished) onClose()
     }
-    TaskEditorContent(state = state, actions = viewModel, onClose = onClose)
+    TaskEditorContent(
+        state = state,
+        actions = viewModel,
+        onClose = onClose,
+        onAddSubTask = { viewModel.taskId?.let(onAddSubTask) },
+        onEditTask = onEditTask,
+    )
 }
 
 @Composable
-fun TaskEditorContent(state: TaskEditorUiState, actions: TaskEditorActions, onClose: () -> Unit) {
+fun TaskEditorContent(
+    state: TaskEditorUiState,
+    actions: TaskEditorActions,
+    onClose: () -> Unit,
+    onAddSubTask: () -> Unit = {},
+    onEditTask: (TaskId) -> Unit = {},
+) {
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
+    val addedText = state.justAdded?.let { pluralStringResource(R.plurals.message_added, it, it) }
+    LaunchedEffect(state.justAdded) {
+        if (addedText != null) {
+            // Shown from its own scope: clearing the message changes this effect's key, which would
+            // otherwise cancel the snackbar at once. Each add, even of the same count, gets its own.
+            snackbarScope.launch { snackbar.showSnackbar(addedText) }
+            actions.onAddedShown()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(if (state.isEditing) R.string.title_edit_task else R.string.title_new_task)) },
@@ -113,7 +156,11 @@ fun TaskEditorContent(state: TaskEditorUiState, actions: TaskEditorActions, onCl
                 },
                 actions = {
                     Button(onClick = actions::onSave, enabled = state.canSave, modifier = Modifier.padding(end = 8.dp)) {
-                        Text(stringResource(R.string.action_save))
+                        val count = state.newTitles.size
+                        Text(
+                            if (state.severalAtOnce && count > 0) pluralStringResource(R.plurals.action_add_tasks, count, count)
+                            else stringResource(R.string.action_save),
+                        )
                     }
                 },
             )
@@ -136,30 +183,73 @@ fun TaskEditorContent(state: TaskEditorUiState, actions: TaskEditorActions, onCl
                 Text(error.userMessage(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
             }
 
+            if (!state.isEditing) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.label_several_at_once),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    val switchLabel = stringResource(R.string.label_several_at_once)
+                    Switch(
+                        checked = state.severalAtOnce,
+                        onCheckedChange = actions::onSeveralAtOnceChange,
+                        modifier = Modifier.semantics { contentDescription = switchLabel },
+                    )
+                }
+            }
+
             OutlinedTextField(
                 value = state.title,
                 onValueChange = actions::onTitleChange,
-                label = { Text(stringResource(R.string.label_title)) },
-                singleLine = true,
+                label = { Text(stringResource(if (state.severalAtOnce) R.string.label_titles else R.string.label_title)) },
+                singleLine = !state.severalAtOnce,
+                minLines = if (state.severalAtOnce) 4 else 1,
+                // Each sentence, so every line of "several at once" starts with a capital too.
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 isError = error is DomainError.BlankTitle,
                 supportingText = { if (error is DomainError.BlankTitle) Text(error.userMessage()) },
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            OutlinedTextField(
-                value = state.description,
-                onValueChange = actions::onDescriptionChange,
-                label = { Text(stringResource(R.string.label_description)) },
-                placeholder = { Text(stringResource(R.string.hint_description)) },
-                minLines = 2,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // In "several" mode each line is a whole task; there's nowhere for one description.
+            if (!state.severalAtOnce) {
+                OutlinedTextField(
+                    value = state.description,
+                    onValueChange = actions::onDescriptionChange,
+                    label = { Text(stringResource(R.string.label_description)) },
+                    placeholder = { Text(stringResource(R.string.hint_description)) },
+                    minLines = 2,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
 
             Section(R.string.label_priority) {
                 PriorityPicker(selected = state.priority, onSelect = actions::onPriorityChange)
             }
 
-            Section(R.string.label_category) {
+            // A sub task is always in its parent's category: there's nothing to pick.
+            val parentTitle = state.parentTitle
+            if (state.canChangeParent) {
+                Section(R.string.label_parent) {
+                    ParentPicker(
+                        choices = state.parentChoices,
+                        categories = state.categories,
+                        selectedId = state.parentId,
+                        selectedTitle = parentTitle,
+                        onSelect = actions::onParentChange,
+                    )
+                }
+            } else if (parentTitle != null) {
+                Text(
+                    stringResource(R.string.label_sub_task_of, parentTitle),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (parentTitle == null) Section(R.string.label_category) {
                 CategoryPicker(
                     categories = state.categories,
                     selectedId = state.categoryId,
@@ -170,7 +260,7 @@ fun TaskEditorContent(state: TaskEditorUiState, actions: TaskEditorActions, onCl
 
             DeadlineSection(state = state, actions = actions)
 
-            if (state.hasDeadline) {
+            run {
                 val requestNotificationPermission = rememberNotificationPermissionRequest()
                 Section(R.string.label_reminder) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -184,6 +274,14 @@ fun TaskEditorContent(state: TaskEditorUiState, actions: TaskEditorActions, onCl
                                 label = { Text(reminderLabel(option)) },
                             )
                         }
+                        ReminderTimeChip(
+                            reminder = state.reminder,
+                            deadlineDate = state.date.takeIf { state.hasDeadline },
+                            onPick = { date, time ->
+                                actions.onReminderTimeChange(date, time)
+                                requestNotificationPermission()
+                            },
+                        )
                     }
                     if (state.reminderFallsBackToDeadline) {
                         Text(
@@ -193,6 +291,45 @@ fun TaskEditorContent(state: TaskEditorUiState, actions: TaskEditorActions, onCl
                         )
                     }
                     if (state.reminder != Reminder.None) ReminderPermissionNotes()
+                }
+            }
+
+            if ((state.canAddSubTasks && state.parentId == null) || state.subTasks.isNotEmpty()) {
+                Section(R.string.label_sub_tasks) {
+                    state.subTasks.forEach { sub ->
+                        Surface(
+                            onClick = { onEditTask(sub.id) },
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(10.dp).background(sub.priority.style().dot, CircleShape))
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    sub.title,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (sub.isDone) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                                    textDecoration = if (sub.isDone) TextDecoration.LineThrough else null,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                    if (state.canAddSubTasks) {
+                        TextButton(onClick = onAddSubTask) {
+                            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.action_add_sub_task))
+                        }
+                    }
+                }
+            }
+
+            if (!state.isEditing) {
+                OutlinedButton(onClick = actions::onSaveAndAddAnother, enabled = state.canSave, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.action_save_add_another))
                 }
             }
 
@@ -225,7 +362,11 @@ fun TaskEditorContent(state: TaskEditorUiState, actions: TaskEditorActions, onCl
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text(stringResource(R.string.dialog_delete_task)) },
-            text = { Text(stringResource(R.string.dialog_delete_task_body)) },
+            text = {
+                val subTasks = state.subTasks.size
+                val body = stringResource(R.string.dialog_delete_task_body)
+                Text(if (subTasks == 0) body else body + " " + pluralStringResource(R.plurals.dialog_delete_task_sub_tasks, subTasks, subTasks))
+            },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
@@ -247,8 +388,9 @@ private fun Section(@StringRes label: Int, content: @Composable () -> Unit) {
 
 @Composable
 private fun PriorityPicker(selected: Priority, onSelect: (Priority) -> Unit) {
+    // Least to most important, left to right: Urgent sits at the far right.
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Priority.entries.reversed().forEach { priority ->
+        Priority.entries.forEach { priority ->
             val style = priority.style()
             val isSelected = priority == selected
             Surface(
@@ -270,6 +412,55 @@ private fun PriorityPicker(selected: Priority, onSelect: (Priority) -> Unit) {
                     Spacer(Modifier.height(6.dp))
                     Text(stringResource(priority.labelRes()), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
+            }
+        }
+    }
+}
+
+/** "None" makes it a main task; each other choice shows its category, as tasks can share a title. */
+@Composable
+private fun ParentPicker(
+    choices: List<Task>,
+    categories: List<Category>,
+    selectedId: TaskId?,
+    selectedTitle: String?,
+    onSelect: (TaskId?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val none = stringResource(R.string.parent_none)
+    val uncategorized = stringResource(R.string.title_uncategorized)
+    val names = categories.associate { it.id to it.name }
+    Box {
+        OutlinedButton(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+        ) {
+            Text(if (selectedId == null) none else selectedTitle.orEmpty(), modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(text = { Text(none) }, onClick = {
+                onSelect(null)
+                expanded = false
+            })
+            choices.forEach { choice ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(choice.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                choice.categoryId?.let { names[it] } ?: uncategorized,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    onClick = {
+                        onSelect(choice.id)
+                        expanded = false
+                    },
+                )
             }
         }
     }
@@ -369,6 +560,50 @@ private fun DeadlineSection(state: TaskEditorUiState, actions: TaskEditorActions
         }
     }
 }
+
+/**
+ * "On a date…": picks a date, then a time. Once set, the chip shows that moment and tapping it changes it.
+ * Starts from the current choice, else the deadline's day (or today) at the next whole hour, or 9:00 on a later day.
+ */
+@Composable
+private fun ReminderTimeChip(reminder: Reminder, deadlineDate: LocalDate?, onPick: (LocalDate, LocalTime) -> Unit) {
+    var step by rememberSaveable { mutableStateOf(ReminderStep.None) }
+    var pickedDate by rememberSaveable { mutableStateOf<LocalDate?>(null) }
+    val current = (reminder as? Reminder.At)?.at?.atZone(ZoneId.systemDefault())
+
+    FilterChip(
+        selected = current != null,
+        onClick = { step = ReminderStep.Date },
+        label = { Text(if (reminder is Reminder.At) reminderLabel(reminder) else stringResource(R.string.reminder_pick_time)) },
+        leadingIcon = { Icon(Icons.Outlined.Event, contentDescription = null, modifier = Modifier.size(18.dp)) },
+    )
+    when (step) {
+        ReminderStep.None -> Unit
+        ReminderStep.Date -> DeadlineDatePicker(
+            initial = current?.toLocalDate() ?: deadlineDate ?: LocalDate.now(),
+            onPick = {
+                pickedDate = it
+                step = ReminderStep.Time
+            },
+            onDismiss = { step = ReminderStep.None },
+        )
+        ReminderStep.Time -> {
+            val date = pickedDate ?: LocalDate.now()
+            val initial = current?.toLocalTime()?.withSecond(0)?.withNano(0)
+                ?: if (date == LocalDate.now()) LocalTime.now().plusHours(1).withMinute(0).withSecond(0).withNano(0) else LocalTime.of(9, 0)
+            DeadlineTimePicker(
+                initial = initial,
+                onPick = {
+                    step = ReminderStep.None
+                    onPick(date, it)
+                },
+                onDismiss = { step = ReminderStep.None },
+            )
+        }
+    }
+}
+
+private enum class ReminderStep { None, Date, Time }
 
 /** Days before today can't be picked. The DatePicker works in UTC midnights. */
 private object FromToday : SelectableDates {

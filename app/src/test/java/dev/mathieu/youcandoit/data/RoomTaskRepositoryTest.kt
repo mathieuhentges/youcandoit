@@ -56,6 +56,7 @@ class RoomTaskRepositoryTest {
             createdAt = NOW,
             status = TaskStatus.Done(NOW.plus(Duration.ofDays(1))),
             position = -3,
+            parentId = null,
         )
 
         tasks.upsert(task)
@@ -122,6 +123,17 @@ class RoomTaskRepositoryTest {
 
         assertNull(tasks.findById(TaskId("a")))
         assertEquals("Task b", tasks.findById(TaskId("b"))?.title)
+    }
+
+    @Test
+    fun `deleting a parent deletes its sub tasks in the same statement`() = runTest {
+        tasks.upsert(aTask("p"))
+        tasks.upsert(aTask("c", parentId = TaskId("p")))
+        tasks.upsert(aTask("other"))
+
+        tasks.delete(TaskId("p"))
+
+        assertEquals(listOf("other"), tasks.observeAll().first().map { it.id.value })
     }
 
     @Test

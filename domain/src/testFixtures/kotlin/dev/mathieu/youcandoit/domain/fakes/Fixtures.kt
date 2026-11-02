@@ -20,6 +20,7 @@ fun aTask(
     categoryId: CategoryId? = null,
     status: TaskStatus = TaskStatus.Open,
     position: Long = 0,
+    parentId: TaskId? = null,
 ) = Task(
     id = TaskId(id),
     title = "Task $id",
@@ -31,6 +32,7 @@ fun aTask(
     createdAt = createdAt,
     status = status,
     position = position,
+    parentId = parentId,
 )
 
 fun aCategory(id: String, name: String = id.replaceFirstChar { it.uppercase() }) =

@@ -17,7 +17,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Opens a database written by version 1 of the app, as on a phone that already has tasks. */
+/** Opens databases written by earlier versions of the app, as on a phone that already has tasks. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = Application::class)
 class MigrationTest {
@@ -29,9 +29,9 @@ class MigrationTest {
         context.deleteDatabase(name)
     }
 
-    /** Creates the version 1 tables from the exported schema, so the test can't drift from what shipped. */
-    private fun createVersion1(insert: SQLiteDatabase.() -> Unit) {
-        val schema = JSONObject(File("schemas/${TodoDatabase::class.qualifiedName}/1.json").readText()).getJSONObject("database")
+    /** Creates an old version's tables from its exported schema, so the test can't drift from what shipped. */
+    private fun createVersion(version: Int, insert: SQLiteDatabase.() -> Unit) {
+        val schema = JSONObject(File("schemas/${TodoDatabase::class.qualifiedName}/$version.json").readText()).getJSONObject("database")
         SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(name).apply { parentFile?.mkdirs() }, null).use { db ->
             val entities = schema.getJSONArray("entities")
             for (i in 0 until entities.length()) {
@@ -44,7 +44,7 @@ class MigrationTest {
             }
             val setup = schema.getJSONArray("setupQueries")
             for (i in 0 until setup.length()) db.execSQL(setup.getString(i))
-            db.version = 1
+            db.version = version
             db.insert()
         }
     }
@@ -59,7 +59,7 @@ class MigrationTest {
 
     @Test
     fun `existing tasks keep the order the old automatic sort gave them, per category`() = runTest {
-        createVersion1 {
+        createVersion(1) {
             execSQL("INSERT INTO categories (id, name, created_at) VALUES ('work', 'Work', 0)")
             task("low", priority = 2)
             task("urgent", priority = 5)
@@ -83,6 +83,45 @@ class MigrationTest {
             )
             assertEquals(listOf("work-urgent", "work-low"), byCategory["work"])
             assertEquals(listOf(0L, 1L), db.taskDao().observeAll().first().filter { it.categoryId == "work" }.map { it.position }.sorted())
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun `version 3 reminders are kept as they were`() = runTest {
+        createVersion(3) {
+            execSQL(
+                "INSERT INTO tasks (id, title, description, priority, category_id, deadline, reminder_type, reminder_offset_seconds, created_at, position) " +
+                    "VALUES ('a', 'A', '', 3, NULL, 1000, 'BEFORE_DEADLINE', 3600, 0, 0)",
+            )
+        }
+
+        val db = Room.databaseBuilder(context, TodoDatabase::class.java, name).allowMainThreadQueries().build()
+        try {
+            val row = db.taskDao().observeAll().first().single()
+            assertEquals("BEFORE_DEADLINE", row.reminderType)
+            assertEquals(3600L, row.reminderOffsetSeconds)
+            assertEquals(null, row.reminderAt)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun `version 2 tasks become top-level tasks and keep their order`() = runTest {
+        createVersion(2) {
+            execSQL(
+                "INSERT INTO tasks (id, title, description, priority, category_id, reminder_type, created_at, position) " +
+                    "VALUES ('a', 'A', '', 3, NULL, 'NONE', 0, 1), ('b', 'B', '', 3, NULL, 'NONE', 0, 0)",
+            )
+        }
+
+        val db = Room.databaseBuilder(context, TodoDatabase::class.java, name).allowMainThreadQueries().build()
+        try {
+            val rows = db.taskDao().observeAll().first().sortedBy { it.position }
+            assertEquals(listOf("b", "a"), rows.map { it.id })
+            assertEquals(listOf(null, null), rows.map { it.parentId })
         } finally {
             db.close()
         }

@@ -11,7 +11,11 @@ interface TaskRepository {
     /** Writes all tasks atomically. */
     suspend fun upsertAll(tasks: List<Task>)
     suspend fun findById(id: TaskId): Task?
+    /** Deletes the task and its sub tasks, atomically. */
     suspend fun delete(id: TaskId)
+
+    /** [delete] for several tasks, all in one go. */
+    suspend fun deleteAll(ids: Set<TaskId>)
 
     /** Moves every task in [categoryId] to "Uncategorized" (categoryId = null). */
     suspend fun unassignCategory(categoryId: CategoryId)

@@ -37,6 +37,7 @@ class SystemReminderNotificationsTest {
         createdAt = Instant.parse("2026-11-01T12:00:00Z"),
         status = TaskStatus.Open,
         position = 0,
+        parentId = null,
     )
 
     @Before

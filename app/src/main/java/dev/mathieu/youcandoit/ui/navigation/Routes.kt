@@ -7,6 +7,7 @@ import dev.mathieu.youcandoit.domain.model.TaskList
 
 object NavArgs {
     const val LIST = "list"
+    const val PARENT = "parent"
     const val TASK_ID = DeepLinks.TASK_ID_ARG // same name, so the deep link fills the editor's argument
 }
 
@@ -14,12 +15,14 @@ object Routes {
     const val HOME = "home"
     const val LISTS = "lists"
     const val HISTORY = "history"
+    const val ABOUT = "about"
     const val LIST = "list/{${NavArgs.LIST}}"
-    const val NEW_TASK = "task/new?${NavArgs.LIST}={${NavArgs.LIST}}"
+    const val NEW_TASK = "task/new?${NavArgs.LIST}={${NavArgs.LIST}}&${NavArgs.PARENT}={${NavArgs.PARENT}}"
     const val EDIT_TASK = "task/edit/{${NavArgs.TASK_ID}}"
 
     fun list(list: TaskList) = "list/${ListKey.encode(list)}"
     fun newTask(list: TaskList) = "task/new?${NavArgs.LIST}=${ListKey.encode(list)}"
+    fun newSubTask(parent: TaskId) = "task/new?${NavArgs.PARENT}=${parent.value}"
     fun editTask(id: TaskId) = "task/edit/${id.value}"
 }
 

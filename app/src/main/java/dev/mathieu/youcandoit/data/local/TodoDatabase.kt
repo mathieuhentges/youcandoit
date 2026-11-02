@@ -8,9 +8,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [TaskEntity::class, CategoryEntity::class],
-    version = 2,
+    version = 4,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2, spec = TodoDatabase.SeedPositions::class)],
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2, spec = TodoDatabase.SeedPositions::class),
+        // Version 3 adds sub tasks (parent_id); every existing task is top-level.
+        AutoMigration(from = 2, to = 3),
+        // Version 4 adds reminders at a chosen time (reminder_at); existing reminders are unchanged.
+        AutoMigration(from = 3, to = 4),
+    ],
 )
 abstract class TodoDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao

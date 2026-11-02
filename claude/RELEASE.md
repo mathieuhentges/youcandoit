@@ -1,7 +1,8 @@
 # Releasing "You Can Do It!" to the Play internal testing track
 
-Package name: `dev.mathieu.youcandoit` (permanent once uploaded).
-Requirements: Android Studio Narwhal 3 or newer (AGP 8.13); the Gradle 8.13 wrapper is included.
+Package name (application ID): `mathieu.dev.youcandoit`, as registered in Play Console (permanent once uploaded).
+The code keeps the `dev.mathieu.youcandoit` namespace; only the ID that Play and the phone see differs.
+Requirements: a recent Android Studio (the project uses AGP 9.5); the Gradle 9.6 wrapper is included.
 
 ## 1. One-time: create your upload key
 

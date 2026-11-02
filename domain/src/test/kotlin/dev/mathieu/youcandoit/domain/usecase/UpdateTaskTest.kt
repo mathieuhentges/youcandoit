@@ -106,6 +106,19 @@ class UpdateTaskTest {
     }
 
     @Test
+    fun `a reminder time that has passed stays when other fields change, but can't be newly set`() = runTest {
+        val passed = Reminder.At(NOW.minus(Duration.ofHours(1)))
+        val task = aTask("a", reminder = passed)
+        env.tasks.upsert(task)
+
+        updateTask(UpdateTask.Params.from(task).copy(title = "Renamed")).getOrThrow()
+        assertTrue(env.scheduler.scheduled.isEmpty())
+
+        val earlier = Reminder.At(NOW.minus(Duration.ofHours(2)))
+        assertIs<DomainError.ReminderNotInFuture>(updateTask(UpdateTask.Params.from(task).copy(reminder = earlier)).exceptionOrNull())
+    }
+
+    @Test
     fun `an unchanged reminder that already fired is kept and not rescheduled`() = runTest {
         val fired = aTask("a", deadline = NOW.plus(Duration.ofMinutes(30)), reminder = Reminder.BeforeDeadline(Duration.ofHours(1)))
         env.tasks.upsert(fired)

@@ -88,7 +88,7 @@ class SystemReminderNotifications @Inject constructor(
 private fun Priority.notificationColor(): Int = when (this) {
     Priority.URGENT -> 0xFFD93025
     Priority.HIGH -> 0xFFF57C00
-    Priority.MEDIUM -> 0xFFE0A100
+    Priority.MEDIUM -> 0xFF00ACC1
     Priority.LOW -> 0xFF4285F4
     Priority.MINIMAL -> 0xFF9AA0A6
 }.toInt()

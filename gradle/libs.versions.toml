@@ -19,6 +19,7 @@ robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
 datastore = "1.1.1"
 reorderable = "2.4.3"
+appUpdate = "2.1.0"
 
 [libraries]
 # Kotlin / coroutines
@@ -44,6 +45,9 @@ compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 
 # Drag to reorder in a LazyColumn
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+
+# Google Play in-app updates (talks to the Play Store app on the phone)
+play-app-update-ktx = { module = "com.google.android.play:app-update-ktx", version.ref = "appUpdate" }
 
 # Settings
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }

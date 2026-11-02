@@ -14,6 +14,7 @@ internal object ReminderColumns {
     const val NONE = "NONE"
     const val AT_DEADLINE = "AT_DEADLINE"
     const val BEFORE_DEADLINE = "BEFORE_DEADLINE"
+    const val AT_TIME = "AT_TIME"
 }
 
 internal fun Task.toEntity(): TaskEntity {
@@ -21,6 +22,7 @@ internal fun Task.toEntity(): TaskEntity {
         Reminder.None -> ReminderColumns.NONE to null
         Reminder.AtDeadline -> ReminderColumns.AT_DEADLINE to null
         is Reminder.BeforeDeadline -> ReminderColumns.BEFORE_DEADLINE to r.offset.seconds
+        is Reminder.At -> ReminderColumns.AT_TIME to null
     }
     return TaskEntity(
         id = id.value,
@@ -31,10 +33,12 @@ internal fun Task.toEntity(): TaskEntity {
         deadline = deadline?.toEpochMilli(),
         reminderType = reminderType,
         reminderOffsetSeconds = reminderOffset,
+        reminderAt = (reminder as? Reminder.At)?.at?.toEpochMilli(),
         createdAt = createdAt.toEpochMilli(),
         doneAt = doneAt?.toEpochMilli(),
         archivedAt = archivedAt?.toEpochMilli(),
         position = position,
+        parentId = parentId?.value,
     )
 }
 
@@ -45,10 +49,11 @@ internal fun TaskEntity.toDomain(): Task = Task(
     priority = Priority.fromLevel(priority),
     categoryId = categoryId?.let { CategoryId(it) },
     deadline = deadline?.let { Instant.ofEpochMilli(it) },
-    reminder = reminderFrom(reminderType, reminderOffsetSeconds),
+    reminder = reminderFrom(reminderType, reminderOffsetSeconds, reminderAt),
     createdAt = Instant.ofEpochMilli(createdAt),
     status = statusFrom(doneAt, archivedAt),
     position = position,
+    parentId = parentId?.let { TaskId(it) },
 )
 
 internal fun statusFrom(doneAt: Long?, archivedAt: Long?): TaskStatus = when {
@@ -60,12 +65,13 @@ internal fun statusFrom(doneAt: Long?, archivedAt: Long?): TaskStatus = when {
     else -> TaskStatus.Open
 }
 
-internal fun reminderFrom(type: String, offsetSeconds: Long?): Reminder = when (type) {
+internal fun reminderFrom(type: String, offsetSeconds: Long?, atMillis: Long? = null): Reminder = when (type) {
     ReminderColumns.NONE -> Reminder.None
     ReminderColumns.AT_DEADLINE -> Reminder.AtDeadline
     ReminderColumns.BEFORE_DEADLINE -> Reminder.BeforeDeadline(
         Duration.ofSeconds(requireNotNull(offsetSeconds) { "BEFORE_DEADLINE reminder without an offset" }),
     )
+    ReminderColumns.AT_TIME -> Reminder.At(Instant.ofEpochMilli(requireNotNull(atMillis) { "AT_TIME reminder without a time" }))
     else -> error("Unknown reminder type in database: $type")
 }
 

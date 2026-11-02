@@ -27,6 +27,18 @@ class MappersTest {
     }
 
     @Test
+    fun `a reminder at a chosen time is stored as epoch millis and read back`() {
+        val task = aTask("a").copy(reminder = Reminder.At(NOW.plus(Duration.ofHours(5))))
+
+        val entity = task.toEntity()
+
+        assertEquals(ReminderColumns.AT_TIME, entity.reminderType)
+        assertEquals(NOW.plus(Duration.ofHours(5)).toEpochMilli(), entity.reminderAt)
+        assertEquals(task, entity.toDomain())
+        assertFailsWith<IllegalArgumentException> { reminderFrom(ReminderColumns.AT_TIME, null, null) }
+    }
+
+    @Test
     fun `unknown reminder types fail loudly instead of being guessed`() {
         assertFailsWith<IllegalStateException> { reminderFrom("SOMETIMES", null) }
     }

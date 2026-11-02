@@ -49,14 +49,18 @@ class UpdateTask @Inject constructor(
         if (existing.isArchived) return Result.failure(DomainError.TaskArchived(params.id))
 
         val now = clock.instant()
+        // A sub task stays in its parent's category, whatever the form says.
+        val parent = existing.parentId?.let { tasks.findById(it) }
+        val categoryId = if (existing.isSubTask) (parent ?: existing).categoryId else params.categoryId
         validateTaskInput(
             title = params.title,
             deadline = params.deadline,
             reminder = params.reminder,
-            categoryId = params.categoryId,
+            categoryId = categoryId,
             now = now,
             categories = categories,
             previousDeadline = existing.deadline,
+            previousReminder = existing.reminder,
         )?.let { return Result.failure(it) }
 
         // Only a reminder or deadline the user just set can fall back; an unchanged one may have fired already.
@@ -67,13 +71,15 @@ class UpdateTask @Inject constructor(
             title = params.title.trim(),
             description = params.description.trim(),
             priority = params.priority,
-            categoryId = params.categoryId,
+            categoryId = categoryId,
             deadline = params.deadline,
             reminder = reminder,
             // A task moved to another category starts at the top there, like a new one.
-            position = if (params.categoryId != existing.categoryId) tasks.topPositionIn(params.categoryId) else existing.position,
+            position = if (categoryId != existing.categoryId) tasks.topPositionIn(categoryId) else existing.position,
         )
-        tasks.upsert(updated)
+        // Its sub tasks move with it.
+        val children = if (categoryId != existing.categoryId) tasks.subTasksOf(existing.id).map { it.copy(categoryId = categoryId) } else emptyList()
+        tasks.upsertAll(listOf(updated) + children)
         reminders.sync(updated)
         return Result.success(updated)
     }

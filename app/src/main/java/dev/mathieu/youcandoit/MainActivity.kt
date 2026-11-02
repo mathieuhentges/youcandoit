@@ -4,8 +4,10 @@ import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -13,8 +15,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.mathieu.youcandoit.settings.AppearanceViewModel
@@ -22,11 +26,17 @@ import dev.mathieu.youcandoit.ui.TodoApp
 import dev.mathieu.youcandoit.ui.theme.TodoTheme
 import dev.mathieu.youcandoit.ui.welcome.WelcomeScreen
 import dev.mathieu.youcandoit.ui.welcome.WelcomeViewModel
+import dev.mathieu.youcandoit.update.UpdateViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val appearance: AppearanceViewModel by viewModels()
     private val welcome: WelcomeViewModel by viewModels()
+    private val updates: UpdateViewModel by viewModels()
+
+    private val updateLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        if (result.resultCode == RESULT_CANCELED) updates.onOfferDeclined()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,15 +55,42 @@ class MainActivity : ComponentActivity() {
             }
 
             val showWelcome by welcome.showWelcome.collectAsStateWithLifecycle()
+            val updateOffer by updates.offer.collectAsStateWithLifecycle()
+            val updateReady by updates.readyToInstall.collectAsStateWithLifecycle()
+
+            // Play's update dialog waits until the welcome screen is closed.
+            LaunchedEffect(updateOffer, showWelcome) {
+                if (updateOffer != null && showWelcome == false) updates.onShowOffer(updateLauncher)
+            }
 
             TodoTheme(darkTheme = darkTheme) {
-                when (showWelcome) {
+                when (val show = showWelcome) {
                     null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) // loading, a split second
-                    true -> WelcomeScreen(onStart = welcome::onStart)
-                    false -> TodoApp()
+                    else -> Box(Modifier.fillMaxSize()) {
+                        // The welcome covers the app rather than replacing it: shown again on a new day,
+                        // it must not lose the screen the user was on (or the task a reminder opened).
+                        Box(if (show) Modifier.clearAndSetSemantics {} else Modifier) {
+                            TodoApp(
+                                onShowWelcome = welcome::onShowAgain,
+                                updateReady = updateReady,
+                                onRestartToUpdate = updates::onRestart,
+                                onUpdateLater = updates::onRestartLater,
+                            )
+                        }
+                        if (show) {
+                            BackHandler(onBack = welcome::onStart)
+                            WelcomeScreen(onStart = welcome::onStart)
+                        }
+                    }
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        welcome.onAppVisible()
+        updates.onAppVisible()
     }
 
     private companion object {

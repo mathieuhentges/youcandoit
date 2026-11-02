@@ -18,7 +18,7 @@ import kotlinx.coroutines.test.runTest
 class ReorderTasksTest {
     private val env = TestEnv()
     private val reorder = ReorderTasks(env.tasks, env.categories)
-    private val observeList = ObserveTaskList(env.tasks)
+    private val observeList = ObserveTaskList(env.tasks, env.categories)
     private val addTask = AddTask(env.tasks, env.categories, env.reminders, env.clock, SequentialIds("new"))
     private val updateTask = UpdateTask(env.tasks, env.categories, env.reminders, env.clock)
 

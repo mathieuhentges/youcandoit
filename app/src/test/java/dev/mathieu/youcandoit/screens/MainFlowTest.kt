@@ -6,11 +6,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.hasScrollAction
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
@@ -19,20 +19,30 @@ import dev.mathieu.youcandoit.domain.fakes.SequentialIds
 import dev.mathieu.youcandoit.domain.fakes.TestEnv
 import dev.mathieu.youcandoit.domain.model.TaskStatus
 import dev.mathieu.youcandoit.domain.usecase.AddTask
+import dev.mathieu.youcandoit.domain.usecase.AddTasks
 import dev.mathieu.youcandoit.domain.usecase.ArchiveDoneTasks
 import dev.mathieu.youcandoit.domain.usecase.ArchiveTask
 import dev.mathieu.youcandoit.domain.usecase.CreateCategory
 import dev.mathieu.youcandoit.domain.usecase.DeleteTask
+import dev.mathieu.youcandoit.domain.usecase.DeleteTasks
 import dev.mathieu.youcandoit.domain.usecase.GetTask
+import dev.mathieu.youcandoit.domain.usecase.MakeSubTask
 import dev.mathieu.youcandoit.domain.usecase.MarkTaskDone
 import dev.mathieu.youcandoit.domain.usecase.MarkTaskNotDone
+import dev.mathieu.youcandoit.domain.usecase.MoveOutOfParent
+import dev.mathieu.youcandoit.domain.usecase.MoveTasksToCategory
 import dev.mathieu.youcandoit.domain.usecase.ObserveArchivedTasks
 import dev.mathieu.youcandoit.domain.usecase.ObserveCategories
 import dev.mathieu.youcandoit.domain.usecase.ObserveProgressStats
+import dev.mathieu.youcandoit.domain.usecase.ObserveSubTasks
+import dev.mathieu.youcandoit.domain.usecase.ParentChoices
 import dev.mathieu.youcandoit.domain.usecase.ObserveTaskList
+import dev.mathieu.youcandoit.domain.usecase.ReorderSubTasks
 import dev.mathieu.youcandoit.domain.usecase.ReorderTasks
 import dev.mathieu.youcandoit.domain.usecase.RestoreTask
+import dev.mathieu.youcandoit.domain.usecase.SetTasksPriority
 import dev.mathieu.youcandoit.domain.usecase.UpdateTask
+import dev.mathieu.youcandoit.settings.FakeSettings
 import dev.mathieu.youcandoit.ui.FakeTicker
 import dev.mathieu.youcandoit.ui.editor.TaskEditorContent
 import dev.mathieu.youcandoit.ui.editor.TaskEditorViewModel
@@ -63,21 +73,27 @@ class MainFlowTest {
     private enum class Screen { EDITOR, HOME, HISTORY }
 
     private val env = TestEnv()
+    private val settings = FakeSettings()
 
     private val editor = TaskEditorViewModel(
         savedStateHandle = SavedStateHandle(),
         observeCategories = ObserveCategories(env.categories),
         getTask = GetTask(env.tasks),
         addTask = AddTask(env.tasks, env.categories, env.reminders, env.clock, SequentialIds("task")),
+        addTasks = AddTasks(env.tasks, env.categories, env.reminders, env.clock, SequentialIds("tasks")),
         updateTask = UpdateTask(env.tasks, env.categories, env.reminders, env.clock),
         deleteTask = DeleteTask(env.tasks, env.reminders),
         createCategory = CreateCategory(env.categories, env.clock, SequentialIds("cat")),
+        observeSubTasks = ObserveSubTasks(env.tasks),
+        parentChoices = ParentChoices(env.tasks, env.categories),
+        makeSubTask = MakeSubTask(env.tasks),
+        moveOutOfParent = MoveOutOfParent(env.tasks),
         clock = env.clock,
         zone = ZoneId.of("America/Montreal"),
     )
     private val home = TaskListViewModel(
         savedStateHandle = SavedStateHandle(),
-        observeTaskList = ObserveTaskList(env.tasks),
+        observeTaskList = ObserveTaskList(env.tasks, env.categories),
         observeCategories = ObserveCategories(env.categories),
         ticker = FakeTicker(env.clock),
         markTaskDone = MarkTaskDone(env.tasks, env.reminders, env.clock),
@@ -85,12 +101,20 @@ class MainFlowTest {
         archiveTask = ArchiveTask(env.tasks, env.clock),
         archiveDoneTasks = ArchiveDoneTasks(env.tasks, env.clock),
         reorderTasks = ReorderTasks(env.tasks, env.categories),
+        reorderSubTasks = ReorderSubTasks(env.tasks),
+        deleteTasks = DeleteTasks(env.tasks, env.reminders),
+        setTasksPriority = SetTasksPriority(env.tasks),
+        moveTasksToCategory = MoveTasksToCategory(env.tasks, env.categories),
+        makeSubTask = MakeSubTask(env.tasks),
+        moveOutOfParent = MoveOutOfParent(env.tasks),
+        settings = settings,
     )
     private val history = HistoryViewModel(
         observeProgressStats = ObserveProgressStats(env.tasks, env.clock),
-        observeArchivedTasks = ObserveArchivedTasks(env.tasks),
+        observeArchivedTasks = ObserveArchivedTasks(env.tasks, env.categories),
         observeCategories = ObserveCategories(env.categories),
         restoreTask = RestoreTask(env.tasks),
+        settings = settings,
         ticker = FakeTicker(env.clock),
     )
 
@@ -120,7 +144,12 @@ class MainFlowTest {
                     }
                     Screen.HISTORY -> {
                         val state by history.uiState.collectAsState()
-                        HistoryContent(state = state, onPeriodSelected = history::onPeriodSelected, onRestore = history::onRestore)
+                        HistoryContent(
+                            state = state,
+                            onPeriodSelected = history::onPeriodSelected,
+                            onRestore = history::onRestore,
+                            onOrderSelected = history::onOrderSelected,
+                        )
                     }
                 }
             }

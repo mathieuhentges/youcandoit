@@ -25,6 +25,7 @@ fun aTask(
     categoryId: CategoryId? = null,
     priority: Priority = Priority.MEDIUM,
     position: Long = 0,
+    parentId: TaskId? = null,
 ) = Task(
     id = TaskId(id),
     title = "Task $id",
@@ -36,6 +37,7 @@ fun aTask(
     createdAt = NOW,
     status = TaskStatus.Open,
     position = position,
+    parentId = parentId,
 )
 
 fun aCategory(id: String, name: String) = Category(CategoryId(id), name, NOW)

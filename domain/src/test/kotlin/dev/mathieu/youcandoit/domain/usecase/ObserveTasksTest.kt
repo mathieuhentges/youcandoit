@@ -6,12 +6,15 @@ import dev.mathieu.youcandoit.domain.fakes.TestEnv
 import dev.mathieu.youcandoit.domain.fakes.aCategory
 import dev.mathieu.youcandoit.domain.fakes.aTask
 import dev.mathieu.youcandoit.domain.model.CategoryId
+import dev.mathieu.youcandoit.domain.model.DoneOrder
+import dev.mathieu.youcandoit.domain.model.HistoryOrder
 import dev.mathieu.youcandoit.domain.model.ListCounts
 import dev.mathieu.youcandoit.domain.model.Priority.HIGH
 import dev.mathieu.youcandoit.domain.model.Priority.LOW
 import dev.mathieu.youcandoit.domain.model.Priority.URGENT
 import dev.mathieu.youcandoit.domain.model.Task
 import dev.mathieu.youcandoit.domain.model.TaskList
+import dev.mathieu.youcandoit.domain.model.TaskOrder
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,8 +22,8 @@ import kotlinx.coroutines.test.runTest
 
 class ObserveTasksTest {
     private val env = TestEnv()
-    private val observeList = ObserveTaskList(env.tasks)
-    private val observeArchived = ObserveArchivedTasks(env.tasks)
+    private val observeList = ObserveTaskList(env.tasks, env.categories)
+    private val observeArchived = ObserveArchivedTasks(env.tasks, env.categories)
     private val observeOverview = ObserveListsOverview(env.tasks, env.categories, env.clock)
 
     private fun List<Task>.ids() = map { it.id.value }
@@ -38,6 +41,46 @@ class ObserveTasksTest {
         }
     }
 
+    private suspend fun seedMixed() = listOf(
+        aTask("f", priority = LOW, position = 0),
+        aTask("a", priority = HIGH, position = 1),
+        aTask("e", priority = LOW, createdAt = NOW.minus(Duration.ofHours(1)), position = 2),
+        aTask("b", priority = HIGH, deadline = NOW.plus(Duration.ofDays(3)), position = 3),
+        aTask("d", priority = URGENT, position = 4),
+        aTask("c", priority = HIGH, deadline = NOW.plus(Duration.ofDays(1)), position = 5),
+        aTask("g", priority = LOW, deadline = NOW.plus(Duration.ofDays(1)), position = 6),
+    ).forEach { env.tasks.upsert(it) }
+
+    @Test
+    fun `by priority - most important first, then nearest deadline, then oldest`() = runTest {
+        seedMixed()
+        observeList(order = TaskOrder.PRIORITY).test {
+            assertEquals(listOf("d", "c", "b", "a", "g", "e", "f"), awaitItem().open.ids())
+        }
+    }
+
+    @Test
+    fun `by deadline - nearest first, no deadline last, ties by priority then age`() = runTest {
+        seedMixed()
+        observeList(order = TaskOrder.DEADLINE).test {
+            assertEquals(listOf("c", "g", "b", "d", "a", "e", "f"), awaitItem().open.ids())
+        }
+    }
+
+    @Test
+    fun `by date added - newest first, ties by priority`() = runTest {
+        listOf(
+            aTask("old", createdAt = NOW.minus(Duration.ofDays(2)), position = 0),
+            aTask("new-low", priority = LOW, createdAt = NOW, position = 1),
+            aTask("new-high", priority = HIGH, createdAt = NOW, position = 2),
+            aTask("mid", createdAt = NOW.minus(Duration.ofDays(1)), position = 3),
+        ).forEach { env.tasks.upsert(it) }
+
+        observeList(order = TaskOrder.DATE_ADDED).test {
+            assertEquals(listOf("new-high", "new-low", "mid", "old"), awaitItem().open.ids())
+        }
+    }
+
     @Test
     fun `done tasks get their own section, most recently done first, archived ones hidden`() = runTest {
         env.tasks.upsert(aTask("open"))
@@ -50,6 +93,21 @@ class ObserveTasksTest {
             assertEquals(listOf("open"), view.open.ids())
             assertEquals(listOf("late", "early"), view.done.ids())
         }
+    }
+
+    @Test
+    fun `done tasks can be ordered by priority or category, ties most recently done first`() = runTest {
+        val work = aCategory("work", "Work")
+        val bills = aCategory("bills", "bills")
+        env.categories.upsert(work)
+        env.categories.upsert(bills)
+        env.tasks.upsert(aTask("a", categoryId = work.id, priority = LOW).markDone(NOW.plusSeconds(30)))
+        env.tasks.upsert(aTask("b", priority = URGENT).markDone(NOW))
+        env.tasks.upsert(aTask("c", categoryId = bills.id, priority = LOW).markDone(NOW.plusSeconds(60)))
+
+        observeList(doneOrder = DoneOrder.RECENTLY_DONE).test { assertEquals(listOf("c", "a", "b"), awaitItem().done.ids()) }
+        observeList(doneOrder = DoneOrder.PRIORITY).test { assertEquals(listOf("b", "c", "a"), awaitItem().done.ids()) }
+        observeList(doneOrder = DoneOrder.CATEGORY).test { assertEquals(listOf("c", "a", "b"), awaitItem().done.ids()) }
     }
 
     @Test
@@ -91,6 +149,21 @@ class ObserveTasksTest {
         observeArchived().test {
             assertEquals(listOf("new", "old"), awaitItem().ids())
         }
+    }
+
+    @Test
+    fun `archived tasks can be ordered by done date, priority or category`() = runTest {
+        val work = aCategory("work", "Work")
+        val bills = aCategory("bills", "bills")
+        env.categories.upsert(work)
+        env.categories.upsert(bills)
+        env.tasks.upsert(aTask("a", categoryId = work.id, priority = LOW).markDone(NOW).archive(NOW.plus(Duration.ofDays(3))))
+        env.tasks.upsert(aTask("b", priority = URGENT).markDone(NOW.plus(Duration.ofDays(2))).archive(NOW.plus(Duration.ofDays(2))))
+        env.tasks.upsert(aTask("c", categoryId = bills.id, priority = LOW).markDone(NOW.plus(Duration.ofDays(1))).archive(NOW.plus(Duration.ofDays(1))))
+
+        observeArchived(HistoryOrder.RECENTLY_DONE).test { assertEquals(listOf("b", "c", "a"), awaitItem().ids()) }
+        observeArchived(HistoryOrder.PRIORITY).test { assertEquals(listOf("b", "a", "c"), awaitItem().ids()) }
+        observeArchived(HistoryOrder.CATEGORY).test { assertEquals(listOf("c", "a", "b"), awaitItem().ids()) }
     }
 
     @Test

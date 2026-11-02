@@ -6,7 +6,9 @@ import dev.mathieu.youcandoit.domain.model.Reminder
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class ReminderPolicyTest {
     private val deadline = NOW.plus(Duration.ofDays(1))
@@ -26,6 +28,21 @@ class ReminderPolicyTest {
     fun `before-deadline reminder fires offset before the deadline`() {
         val task = aTask("a", deadline = deadline, reminder = Reminder.BeforeDeadline(Duration.ofHours(2)))
         assertEquals(deadline.minus(Duration.ofHours(2)), ReminderPolicy.triggerAt(task, NOW))
+    }
+
+    @Test
+    fun `a reminder at a chosen time fires then, with or without a deadline`() {
+        val at = NOW.plus(Duration.ofHours(3))
+        val task = aTask("a", reminder = Reminder.At(at))
+        assertEquals(at, ReminderPolicy.triggerAt(task, NOW))
+        assertTrue(ReminderPolicy.wantsReminder(task))
+        assertNull(ReminderPolicy.triggerAt(task, at.plusSeconds(1)))
+    }
+
+    @Test
+    fun `a reminder relative to a deadline that's gone doesn't count`() {
+        assertFalse(ReminderPolicy.hasReminder(aTask("a", reminder = Reminder.AtDeadline)))
+        assertNull(ReminderPolicy.triggerAt(aTask("a", reminder = Reminder.AtDeadline), NOW))
     }
 
     @Test

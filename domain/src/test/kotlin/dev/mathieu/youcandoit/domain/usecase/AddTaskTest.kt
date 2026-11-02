@@ -66,6 +66,24 @@ class AddTaskTest {
     }
 
     @Test
+    fun `a reminder at a chosen time needs no deadline, and is scheduled`() = runTest {
+        val at = NOW.plus(Duration.ofHours(2))
+
+        val task = addTask(AddTask.Params(title = "Call", reminder = Reminder.At(at))).getOrThrow()
+
+        assertEquals(Reminder.At(at), task.reminder)
+        assertEquals(at, env.scheduler.scheduled[task.id])
+    }
+
+    @Test
+    fun `rejects a reminder time that has passed`() = runTest {
+        val result = addTask(AddTask.Params(title = "Call", reminder = Reminder.At(NOW.minusSeconds(60))))
+
+        assertIs<DomainError.ReminderNotInFuture>(result.exceptionOrNull())
+        assertTrue(env.tasks.all.isEmpty())
+    }
+
+    @Test
     fun `rejects a reminder without a deadline`() = runTest {
         val result = addTask(AddTask.Params(title = "x", reminder = Reminder.AtDeadline))
         assertIs<DomainError.ReminderWithoutDeadline>(result.exceptionOrNull())

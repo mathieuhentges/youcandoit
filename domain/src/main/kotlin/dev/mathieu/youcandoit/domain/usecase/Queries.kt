@@ -4,6 +4,7 @@ import dev.mathieu.youcandoit.domain.model.Category
 import dev.mathieu.youcandoit.domain.model.DomainError
 import dev.mathieu.youcandoit.domain.model.Task
 import dev.mathieu.youcandoit.domain.model.TaskId
+import dev.mathieu.youcandoit.domain.model.TaskOrder
 import dev.mathieu.youcandoit.domain.repository.CategoryRepository
 import dev.mathieu.youcandoit.domain.repository.TaskRepository
 import java.text.Collator
@@ -29,4 +30,16 @@ class GetTask @Inject constructor(
 ) {
     suspend operator fun invoke(id: TaskId): Result<Task> =
         tasks.findById(id)?.let { Result.success(it) } ?: Result.failure(DomainError.TaskNotFound(id))
+}
+
+/** A parent's sub tasks for its editor: open ones in drag order, then done ones; archived left out. */
+class ObserveSubTasks @Inject constructor(
+    private val tasks: TaskRepository,
+) {
+    operator fun invoke(parentId: TaskId): Flow<List<Task>> =
+        tasks.observeAll().map { all ->
+            val children = all.filter { it.parentId == parentId && !it.isArchived }
+            children.filter { it.isOpen }.sortedWith(ObserveTaskList.comparatorFor(TaskOrder.MY_ORDER)) +
+                children.filter { it.isDone }.sortedByDescending { it.doneAt }
+        }
 }
