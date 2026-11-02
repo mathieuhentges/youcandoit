@@ -1,7 +1,7 @@
 [versions]
-agp = "8.13.0"  # first line of support for compileSdk/targetSdk 36 (needs Gradle 8.13+)
-kotlin = "2.1.0"
-ksp = "2.1.0-1.0.29"
+agp = "9.5.0"  # first line of support for compileSdk/targetSdk 36 (needs Gradle 8.13+)
+kotlin = "2.2.10"
+ksp = "2.3.6"
 hilt = "2.54"
 coroutines = "1.9.0"
 javaxInject = "1"
@@ -14,7 +14,7 @@ lifecycle = "2.8.7"
 composeBom = "2024.12.01"
 navigationCompose = "2.8.5"
 hiltNavigationCompose = "1.2.0"
-room = "2.6.1"
+room = "2.7.2"
 robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
 datastore = "1.1.1"
