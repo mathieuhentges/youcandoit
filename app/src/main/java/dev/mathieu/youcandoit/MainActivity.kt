@@ -22,7 +22,9 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.mathieu.youcandoit.settings.AppearanceViewModel
+import dev.mathieu.youcandoit.ui.BackupActions
 import dev.mathieu.youcandoit.ui.TodoApp
+import dev.mathieu.youcandoit.ui.backup.BackupViewModel
 import dev.mathieu.youcandoit.ui.theme.TodoTheme
 import dev.mathieu.youcandoit.ui.welcome.WelcomeScreen
 import dev.mathieu.youcandoit.ui.welcome.WelcomeViewModel
@@ -33,9 +35,16 @@ class MainActivity : ComponentActivity() {
     private val appearance: AppearanceViewModel by viewModels()
     private val welcome: WelcomeViewModel by viewModels()
     private val updates: UpdateViewModel by viewModels()
+    private val backup: BackupViewModel by viewModels()
 
     private val updateLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         if (result.resultCode == RESULT_CANCELED) updates.onOfferDeclined()
+    }
+    private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) backup.onExport(uri)
+    }
+    private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) backup.onImport(uri)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,6 +66,7 @@ class MainActivity : ComponentActivity() {
             val showWelcome by welcome.showWelcome.collectAsStateWithLifecycle()
             val updateOffer by updates.offer.collectAsStateWithLifecycle()
             val updateReady by updates.readyToInstall.collectAsStateWithLifecycle()
+            val backupMessage by backup.message.collectAsStateWithLifecycle()
 
             // Play's update dialog waits until the welcome screen is closed.
             LaunchedEffect(updateOffer, showWelcome) {
@@ -75,6 +85,13 @@ class MainActivity : ComponentActivity() {
                                 updateReady = updateReady,
                                 onRestartToUpdate = updates::onRestart,
                                 onUpdateLater = updates::onRestartLater,
+                                backup = BackupActions(
+                                    onExport = { exportLauncher.launch(backup.exportFileName()) },
+                                    // Any type: Drive and file managers don't all label a .json file the same way.
+                                    onImport = { importLauncher.launch(arrayOf("*/*")) },
+                                    message = backupMessage,
+                                    onMessageShown = backup::onMessageShown,
+                                ),
                             )
                         }
                         if (show) {

@@ -35,6 +35,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Inventory2
@@ -122,6 +124,8 @@ fun TaskListScreen(
     onBack: (() -> Unit)?,
     onShowWelcome: (() -> Unit)? = null,
     onOpenAbout: (() -> Unit)? = null,
+    onExport: (() -> Unit)? = null,
+    onImport: (() -> Unit)? = null,
     viewModel: TaskListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -150,6 +154,8 @@ fun TaskListScreen(
         onOpenAppearance = if (onBack == null) ({ showAppearance = true }) else null,
         onShowWelcome = onShowWelcome,
         onOpenAbout = onOpenAbout,
+        onExport = onExport,
+        onImport = onImport,
     )
     if (showAppearance) AppearanceDialog(onDismiss = { showAppearance = false })
 }
@@ -173,6 +179,8 @@ fun TaskListContent(
     onOpenAppearance: (() -> Unit)? = null,
     onShowWelcome: (() -> Unit)? = null,
     onOpenAbout: (() -> Unit)? = null,
+    onExport: (() -> Unit)? = null,
+    onImport: (() -> Unit)? = null,
     onMakeSubTask: (TaskId, TaskId) -> Unit = { _, _ -> },
     onMoveOutOfParent: (TaskId) -> Unit = {},
 ) {
@@ -260,7 +268,7 @@ fun TaskListContent(
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item(key = "header") { ListHeader(state, onSortChange, AppMenuActions(onOpenAppearance, onShowWelcome, onOpenAbout)) }
+            item(key = "header") { ListHeader(state, onSortChange, AppMenuActions(onOpenAppearance, onShowWelcome, onOpenAbout, onExport, onImport)) }
 
             if (!state.isLoading && state.open.isEmpty() && state.done.isEmpty()) {
                 item(key = "empty") {
@@ -451,6 +459,8 @@ private data class AppMenuActions(
     val onOpenAppearance: (() -> Unit)?,
     val onShowWelcome: (() -> Unit)?,
     val onOpenAbout: (() -> Unit)?,
+    val onExport: (() -> Unit)?,
+    val onImport: (() -> Unit)?,
 )
 
 @Composable
@@ -458,6 +468,8 @@ private fun AppMenu(actions: AppMenuActions) {
     val items = listOfNotNull(
         actions.onOpenAppearance?.let { Triple(R.string.appearance_title, Icons.Outlined.DarkMode, it) },
         actions.onShowWelcome?.let { Triple(R.string.action_show_welcome, Icons.Outlined.FavoriteBorder, it) },
+        actions.onExport?.let { Triple(R.string.action_export, Icons.Outlined.FileUpload, it) },
+        actions.onImport?.let { Triple(R.string.action_import, Icons.Outlined.FileDownload, it) },
         actions.onOpenAbout?.let { Triple(R.string.title_about, Icons.Outlined.Info, it) },
     )
     if (items.isEmpty()) return

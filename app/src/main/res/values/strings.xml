@@ -194,6 +194,15 @@
     <string name="action_privacy_policy">Privacy policy</string>
     <string name="update_ready">A new version is ready</string>
     <string name="action_restart">Restart</string>
+    <string name="action_export">Export tasks</string>
+    <string name="action_import">Import tasks</string>
+    <string name="backup_exported">Tasks exported</string>
+    <plurals name="backup_imported">
+        <item quantity="one">Imported %1$d task</item>
+        <item quantity="other">Imported %1$d tasks</item>
+    </plurals>
+    <string name="backup_not_a_backup">This file isn\'t a You Can Do It! export</string>
+    <string name="backup_failed">Couldn\'t open that file. Try again, or pick another place.</string>
     <string name="action_show_welcome">Show the encouragement again</string>
     <string name="theme_system">Follow phone</string>
     <string name="theme_light">Light</string>

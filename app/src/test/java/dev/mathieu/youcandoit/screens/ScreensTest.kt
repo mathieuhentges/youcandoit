@@ -246,8 +246,10 @@ class ScreensTest {
     }
 
     @Test
-    fun `home's menu holds appearance, the encouragement and about, and opens about`() {
+    fun `home's menu holds appearance, the encouragement, export, import and about`() {
         var opened = 0
+        var exported = 0
+        var imported = 0
         compose.setContent {
             TodoTheme(dynamicColor = false) {
                 TaskListContent(
@@ -262,6 +264,8 @@ class ScreensTest {
                     onOpenAppearance = {},
                     onShowWelcome = {},
                     onOpenAbout = { opened++ },
+                    onExport = { exported++ },
+                    onImport = { imported++ },
                 )
             }
         }
@@ -269,9 +273,13 @@ class ScreensTest {
         compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("Appearance").assertIsDisplayed()
         compose.onNodeWithText("Show the encouragement again").assertIsDisplayed()
+        compose.onNodeWithText("Export tasks").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Import tasks").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("About & contact").performClick()
 
-        assertEquals(1, opened)
+        assertEquals(listOf(1, 1, 1), listOf(exported, imported, opened))
     }
 
     @Test

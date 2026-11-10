@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -36,6 +37,7 @@ import androidx.navigation.navDeepLink
 import dev.mathieu.youcandoit.DeepLinks
 import dev.mathieu.youcandoit.R
 import dev.mathieu.youcandoit.ui.about.AboutScreen
+import dev.mathieu.youcandoit.ui.backup.BackupMessage
 import dev.mathieu.youcandoit.ui.common.LocalToday
 import dev.mathieu.youcandoit.ui.common.rememberToday
 import dev.mathieu.youcandoit.ui.editor.TaskEditorScreen
@@ -57,9 +59,22 @@ fun TodoApp(
     updateReady: Boolean = false,
     onRestartToUpdate: () -> Unit = {},
     onUpdateLater: () -> Unit = {},
+    backup: BackupActions = BackupActions.None,
 ) {
     CompositionLocalProvider(LocalToday provides rememberToday()) {
-        TodoNavigation(onShowWelcome, updateReady, onRestartToUpdate, onUpdateLater)
+        TodoNavigation(onShowWelcome, updateReady, onRestartToUpdate, onUpdateLater, backup)
+    }
+}
+
+/** Export and import open the system file picker, so they're run by the activity; [message] is how it went. */
+data class BackupActions(
+    val onExport: (() -> Unit)?,
+    val onImport: (() -> Unit)?,
+    val message: BackupMessage?,
+    val onMessageShown: () -> Unit,
+) {
+    companion object {
+        val None = BackupActions(onExport = null, onImport = null, message = null, onMessageShown = {})
     }
 }
 
@@ -69,6 +84,7 @@ private fun TodoNavigation(
     updateReady: Boolean,
     onRestartToUpdate: () -> Unit,
     onUpdateLater: () -> Unit,
+    backup: BackupActions,
 ) {
     val nav = rememberNavController()
     val backStackEntry by nav.currentBackStackEntryAsState()
@@ -87,6 +103,19 @@ private fun TodoNavigation(
         if (!updateReady) return@LaunchedEffect
         val result = snackbar.showSnackbar(updateMessage, actionLabel = restartLabel, withDismissAction = true, duration = SnackbarDuration.Indefinite)
         if (result == SnackbarResult.ActionPerformed) onRestartToUpdate() else onUpdateLater()
+    }
+    val backupText = backup.message?.let { message ->
+        when (message) {
+            BackupMessage.Exported -> stringResource(R.string.backup_exported)
+            is BackupMessage.Imported -> pluralStringResource(R.plurals.backup_imported, message.tasks, message.tasks)
+            BackupMessage.NotABackup -> stringResource(R.string.backup_not_a_backup)
+            BackupMessage.Failed -> stringResource(R.string.backup_failed)
+        }
+    }
+    LaunchedEffect(backup.message) {
+        if (backupText == null) return@LaunchedEffect
+        snackbar.showSnackbar(backupText, withDismissAction = true)
+        backup.onMessageShown()
     }
 
     Scaffold(
@@ -126,6 +155,8 @@ private fun TodoNavigation(
                     onBack = null,
                     onShowWelcome = onShowWelcome,
                     onOpenAbout = { nav.navigate(Routes.ABOUT) },
+                    onExport = backup.onExport,
+                    onImport = backup.onImport,
                 )
             }
             composable(Routes.LISTS) {

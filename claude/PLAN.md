@@ -224,6 +224,16 @@ Built with the defaults below.
 - A task with sub tasks of its own can't go under another (one level only): no picker
 - Domain: `ParentChoices` (open main tasks, by category then My order); `MakeSubTask` now also moves a sub task to another parent
 
+## Phase 18 — Export / import ✅ (not committed yet)
+- Home ⋮ menu: **Export tasks** (system "save as" picker, `you-can-do-it-<date>.json`) and **Import tasks** (any file)
+- The file: versioned JSON (`BackupJson`, format `you-can-do-it-backup` v1): categories and every task,
+  archived ones included, with sub tasks, positions, deadlines and reminders. Settings aren't included
+- Import adds and never deletes: same task id → replaced by the file's; category with the same id or
+  name → reused; orphan sub task → main task; reminders scheduled again
+- A wrong file, a newer version's export or an unreadable file gives a message, not a crash
+- First Play upload: 1.0.1 (versionCode 2), application ID `mathieu.dev.youcandoit` as registered in
+  Play Console; data from the earlier `dev.mathieu.youcandoit` copy moved over with Export / Import
+
 ## Review cleanups (later)
 - Sub-task lookups (`subTasksOf`, `topPositionIn`, `ObserveSubTasks`) load the whole task table; use DAO queries on the `parent_id` index
 - "Open first, then most recently done" sub-task ordering exists in both `ObserveTaskList` and `ObserveSubTasks`; share one helper
