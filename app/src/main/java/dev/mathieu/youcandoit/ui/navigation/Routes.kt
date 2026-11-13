@@ -16,6 +16,7 @@ object Routes {
     const val LISTS = "lists"
     const val HISTORY = "history"
     const val ABOUT = "about"
+    const val CUSTOMIZE = "customize"
     const val LIST = "list/{${NavArgs.LIST}}"
     const val NEW_TASK = "task/new?${NavArgs.LIST}={${NavArgs.LIST}}&${NavArgs.PARENT}={${NavArgs.PARENT}}"
     const val EDIT_TASK = "task/edit/{${NavArgs.TASK_ID}}"

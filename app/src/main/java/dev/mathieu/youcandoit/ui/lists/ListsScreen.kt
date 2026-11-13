@@ -2,6 +2,15 @@
 
 package dev.mathieu.youcandoit.ui.lists
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.semantics
+import dev.mathieu.youcandoit.domain.model.Priority
+import dev.mathieu.youcandoit.ui.common.labelRes
+import dev.mathieu.youcandoit.ui.common.style
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -80,6 +89,8 @@ fun ListsContent(
     onDialogConfirm: () -> Unit,
     onDialogDismiss: () -> Unit,
 ) {
+    // Whose details are open: a category's id, or UNCATEGORIZED; the counts are read from [state] so they stay live.
+    var details by rememberSaveable { mutableStateOf<String?>(null) }
     Scaffold { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -112,6 +123,7 @@ fun ListsContent(
                                 trailing = {
                                     CategoryMenu(
                                         name = summary.category.name,
+                                        onDetails = { details = summary.category.id.value },
                                         onRename = { onRename(summary.category) },
                                         onDelete = { onDelete(summary.category) },
                                     )
@@ -123,7 +135,12 @@ fun ListsContent(
                             name = stringResource(R.string.title_uncategorized),
                             counts = state.uncategorized,
                             onClick = { onOpenList(TaskList.Uncategorized) },
-                            trailing = null,
+                            trailing = {
+                                CategoryMenu(
+                                    name = stringResource(R.string.title_uncategorized),
+                                    onDetails = { details = UNCATEGORIZED },
+                                )
+                            },
                             muted = true,
                         )
                     }
@@ -179,6 +196,85 @@ fun ListsContent(
         )
         null -> Unit
     }
+
+    details?.let { key ->
+        val summary = state.categories.firstOrNull { it.category.id.value == key }
+        if (key != UNCATEGORIZED && summary == null) {
+            // Deleted meanwhile.
+            details = null
+        } else {
+            DetailsDialog(
+                name = summary?.category?.name ?: stringResource(R.string.title_uncategorized),
+                counts = summary?.counts ?: state.uncategorized,
+                openByPriority = summary?.openByPriority ?: state.uncategorizedByPriority,
+                onDismiss = { details = null },
+            )
+        }
+    }
+}
+
+/** Category ids are never empty, so this can't clash with one. */
+private const val UNCATEGORIZED = ""
+
+@Composable
+private fun DetailsDialog(name: String, counts: ListCounts, openByPriority: Map<Priority, Int>, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(name) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CountTile(counts.open, R.string.details_open, Modifier.weight(1f))
+                    CountTile(counts.overdue, R.string.details_overdue, Modifier.weight(1f), alert = counts.overdue > 0)
+                    CountTile(counts.done, R.string.details_done, Modifier.weight(1f))
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        stringResource(R.string.details_by_priority),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    // Most important first.
+                    Priority.entries.reversed().forEach { priority ->
+                        val count = openByPriority[priority] ?: 0
+                        Row(
+                            modifier = Modifier.fillMaxWidth().height(36.dp).semantics(mergeDescendants = true) {},
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(Modifier.size(12.dp).background(priority.style().dot, CircleShape))
+                            Text(stringResource(priority.labelRes()), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                            Text(
+                                count.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (count == 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
+        },
+    )
+}
+
+@Composable
+private fun CountTile(count: Int, label: Int, modifier: Modifier, alert: Boolean = false) {
+    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = modifier) {
+        Column(
+            Modifier.padding(vertical = 10.dp).semantics(mergeDescendants = true) {},
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                count.toString(),
+                style = MaterialTheme.typography.titleLarge,
+                color = if (alert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+            )
+            Text(stringResource(label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 @Composable
@@ -221,27 +317,26 @@ private fun ListRow(
 }
 
 @Composable
-private fun CategoryMenu(name: String, onRename: () -> Unit, onDelete: () -> Unit) {
+private fun CategoryMenu(name: String, onDetails: () -> Unit, onRename: (() -> Unit)? = null, onDelete: (() -> Unit)? = null) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_options, name))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_rename)) },
-                onClick = {
-                    expanded = false
-                    onRename()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_delete)) },
-                onClick = {
-                    expanded = false
-                    onDelete()
-                },
-            )
+            listOfNotNull(
+                R.string.action_details to onDetails,
+                onRename?.let { R.string.action_rename to it },
+                onDelete?.let { R.string.action_delete to it },
+            ).forEach { (label, onClick) ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(label)) },
+                    onClick = {
+                        expanded = false
+                        onClick()
+                    },
+                )
+            }
         }
     }
 }

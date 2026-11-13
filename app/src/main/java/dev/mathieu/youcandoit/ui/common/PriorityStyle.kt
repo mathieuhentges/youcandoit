@@ -4,14 +4,20 @@ import androidx.annotation.StringRes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import dev.mathieu.youcandoit.R
 import dev.mathieu.youcandoit.domain.model.Priority
+import dev.mathieu.youcandoit.settings.PriorityColors
 
-/** [dot] marks the priority (checkbox ring, chip dot); [container]/[content] are the chip colors. */
+/** [dot] marks the priority (checkbox ring, row dot); [container]/[content] are the picker's colors. */
 @Immutable
 data class PriorityStyle(val dot: Color, val container: Color, val content: Color)
+
+/** The colors the user picked for each priority (Customize screen); provided by the activity. */
+val LocalPriorityColors = staticCompositionLocalOf { PriorityColors.DEFAULT }
 
 private val LIGHT = mapOf(
     Priority.URGENT to PriorityStyle(Color(0xFFD93025), Color(0xFFFCE8E6), Color(0xFFA50E0E)),
@@ -29,11 +35,33 @@ private val DARK = mapOf(
     Priority.MINIMAL to PriorityStyle(Color(0xFFBDC1C6), Color(0xFF3A3D41), Color(0xFFE3E5E8)),
 )
 
-@Composable
-fun Priority.style(): PriorityStyle {
-    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    return (if (dark) DARK else LIGHT).getValue(this)
+/** Quick picks in the color picker, with their names for screen readers. */
+val PresetColors: List<Pair<Color, Int>> = listOf(
+    Color(0xFFD93025) to R.string.color_red,
+    Color(0xFFF57C00) to R.string.color_orange,
+    Color(0xFFF9AB00) to R.string.color_yellow,
+    Color(0xFF1E8E3E) to R.string.color_green,
+    Color(0xFF00ACC1) to R.string.color_cyan,
+    Color(0xFF4285F4) to R.string.color_blue,
+    Color(0xFF9334E6) to R.string.color_purple,
+    Color(0xFFE52592) to R.string.color_pink,
+    Color(0xFF8D6E63) to R.string.color_brown,
+    Color(0xFF9AA0A6) to R.string.color_grey,
+)
+
+/** A picked color is used as is for the dot; the picker's tints are mixed from it. */
+private fun customStyle(color: Color, dark: Boolean): PriorityStyle = if (dark) {
+    PriorityStyle(color, lerp(Color(0xFF1B1B1F), color, 0.35f), lerp(color, Color.White, 0.7f))
+} else {
+    PriorityStyle(color, lerp(Color.White, color, 0.15f), lerp(color, Color.Black, 0.5f))
 }
+
+fun PriorityColors.style(priority: Priority, dark: Boolean): PriorityStyle =
+    customOf(priority)?.let { customStyle(Color(it), dark) } ?: (if (dark) DARK else LIGHT).getValue(priority)
+
+@Composable
+fun Priority.style(): PriorityStyle =
+    LocalPriorityColors.current.style(this, dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f)
 
 @StringRes
 fun Priority.labelRes(): Int = when (this) {

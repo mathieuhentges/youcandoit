@@ -67,11 +67,17 @@ data class ListCounts(val open: Int, val overdue: Int, val done: Int) {
     }
 }
 
-data class CategorySummary(val category: Category, val counts: ListCounts)
+/** [openByPriority]: how many open tasks of each priority, every priority listed (0 included). */
+data class CategorySummary(
+    val category: Category,
+    val counts: ListCounts,
+    val openByPriority: Map<Priority, Int> = Priority.entries.associateWith { 0 },
+)
 
 /** Everything the Lists screen shows. Archived tasks are not counted. */
 data class ListsOverview(
     val all: ListCounts,
     val categories: List<CategorySummary>,
     val uncategorized: ListCounts,
+    val uncategorizedByPriority: Map<Priority, Int> = Priority.entries.associateWith { 0 },
 )

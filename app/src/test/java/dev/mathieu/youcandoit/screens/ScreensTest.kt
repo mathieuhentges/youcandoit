@@ -32,7 +32,17 @@ import dev.mathieu.youcandoit.domain.model.Reminder
 import dev.mathieu.youcandoit.domain.model.TaskId
 import dev.mathieu.youcandoit.domain.model.TaskList
 import dev.mathieu.youcandoit.domain.model.TaskOrder
-import dev.mathieu.youcandoit.settings.AppearanceDialogContent
+import dev.mathieu.youcandoit.domain.model.Category
+import dev.mathieu.youcandoit.domain.model.CategorySummary
+import dev.mathieu.youcandoit.domain.model.ListCounts
+import dev.mathieu.youcandoit.settings.CustomizeContent
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.test.performSemanticsAction
+import dev.mathieu.youcandoit.settings.PriorityColors
+import dev.mathieu.youcandoit.ui.lists.ListsContent
+import dev.mathieu.youcandoit.ui.lists.ListsUiState
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasText
 import dev.mathieu.youcandoit.settings.ListSort
 import dev.mathieu.youcandoit.settings.ThemePreference
 import dev.mathieu.youcandoit.ui.about.AboutContent
@@ -102,7 +112,9 @@ class ScreensTest {
         }
 
         compose.onNodeWithText("All tasks").assertIsDisplayed()
-        compose.onNodeWithText("Urgent").assertIsDisplayed()
+        // Just the dot: the priority's name is only for screen readers, so the title keeps the room.
+        compose.onNodeWithContentDescription("Urgent", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("Urgent").assertDoesNotExist()
         compose.onNodeWithText("Done · 1").assertIsDisplayed()
 
         compose.onNodeWithContentDescription("Mark done: Task a").performClick()
@@ -261,7 +273,7 @@ class ScreensTest {
                     onArchive = {},
                     onArchiveDone = {},
                     onMessageShown = {},
-                    onOpenAppearance = {},
+                    onOpenCustomize = {},
                     onShowWelcome = {},
                     onOpenAbout = { opened++ },
                     onExport = { exported++ },
@@ -271,7 +283,7 @@ class ScreensTest {
         }
 
         compose.onNodeWithContentDescription("More options").performClick()
-        compose.onNodeWithText("Appearance").assertIsDisplayed()
+        compose.onNodeWithText("Customize").assertIsDisplayed()
         compose.onNodeWithText("Show the encouragement again").assertIsDisplayed()
         compose.onNodeWithText("Export tasks").performClick()
         compose.onNodeWithContentDescription("More options").performClick()
@@ -364,6 +376,48 @@ class ScreensTest {
     }
 
     @Test
+    fun `the sub-task count next to a parent folds its sub tasks away and back`() {
+        val toggled = mutableListOf<String>()
+        val parent = item("p").copy(subTasks = SubTaskCount(done = 1, total = 2))
+        var state by mutableStateOf(
+            TaskListUiState(
+                isLoading = false,
+                groups = listOf(TaskGroup(null, CategoryLabel.Uncategorized, listOf(parent))),
+                subTasks = mapOf(TaskId("p") to listOf(item("c1"), item("c2", done = true))),
+            ),
+        )
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                TaskListContent(
+                    state = state,
+                    onAddTask = {},
+                    onEditTask = {},
+                    onBack = null,
+                    onToggleDone = {},
+                    onArchive = {},
+                    onArchiveDone = {},
+                    onMessageShown = {},
+                    onToggleSubTasks = { id ->
+                        toggled += id.value
+                        state = state.copy(collapsed = if (id in state.collapsed) state.collapsed - id else state.collapsed + id)
+                    },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Task c1").assertIsDisplayed()
+        compose.onNodeWithText("1/2", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Hide sub tasks, 1 of 2 sub tasks done", useUnmergedTree = true).performClick()
+
+        compose.onNodeWithText("Task c1").assertDoesNotExist()
+        compose.onNodeWithText("1/2", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Show sub tasks, 1 of 2 sub tasks done", useUnmergedTree = true).performClick()
+
+        compose.onNodeWithText("Task c1").assertIsDisplayed()
+        assertEquals(listOf("p", "p"), toggled)
+    }
+
+    @Test
     fun `a done parent keeps its sub tasks visible under it in the done section`() {
         val parent = item("p", done = true).copy(subTasks = SubTaskCount(done = 1, total = 1))
         compose.setContent {
@@ -401,37 +455,6 @@ class ScreensTest {
         compose.runOnIdle { state = state.copy(justAdded = 1) }
 
         compose.onNodeWithText("1 task added").assertIsDisplayed()
-    }
-
-    @Test
-    fun `sub tasks can be hidden under their parent`() {
-        val parent = item("p").copy(subTasks = SubTaskCount(done = 0, total = 1))
-        compose.setContent {
-            TodoTheme(dynamicColor = false) {
-                TaskListContent(
-                    state = TaskListUiState(
-                        isLoading = false,
-                        groups = listOf(TaskGroup(null, CategoryLabel.Uncategorized, listOf(parent))),
-                        subTasks = mapOf(TaskId("p") to listOf(item("c"))),
-                    ),
-                    onAddTask = {},
-                    onEditTask = {},
-                    onBack = null,
-                    onToggleDone = {},
-                    onArchive = {},
-                    onArchiveDone = {},
-                    onMessageShown = {},
-                )
-            }
-        }
-
-        compose.onNodeWithText("0/1").assertIsDisplayed()
-        compose.onNodeWithText("Task c").assertIsDisplayed()
-
-        compose.onNodeWithContentDescription("Hide sub tasks").performClick()
-
-        compose.onNodeWithText("Task c").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Show sub tasks").assertIsDisplayed()
     }
 
     @Test
@@ -663,17 +686,28 @@ class ScreensTest {
         var nested: Pair<String, String>? = null
         dragList({}, { nested = it })
 
-        compose.onNodeWithContentDescription("Drag to reorder: Task c", useUnmergedTree = true).performTouchInput {
+        val handle = compose.onNodeWithContentDescription("Drag to reorder: Task c", useUnmergedTree = true)
+        handle.performTouchInput {
             down(center)
-            repeat(20) {
+            repeat(5) {
                 moveBy(Offset(4.dp.toPx(), 0f))
                 advanceEventTime(16)
             }
-            up()
         }
+        // While dragging, the row says which way to push and, once far enough, what letting go does.
+        compose.onNodeWithText("Push right to put it under “Task b”").assertIsDisplayed()
+        handle.performTouchInput {
+            repeat(15) {
+                moveBy(Offset(4.dp.toPx(), 0f))
+                advanceEventTime(16)
+            }
+        }
+        compose.onNodeWithText("Let go: sub task of “Task b”").assertIsDisplayed()
+        handle.performTouchInput { up() }
         compose.waitForIdle()
 
         assertEquals("c" to "b", nested)
+        compose.onNodeWithText("Let go: sub task of “Task b”").assertDoesNotExist()
     }
 
     @Test
@@ -741,11 +775,18 @@ class ScreensTest {
     }
 
     @Test
-    fun `the appearance dialog marks the current choice and reports a new one`() {
+    fun `customize marks the current theme and reports a new one`() {
         var picked: ThemePreference? = null
         compose.setContent {
             TodoTheme(dynamicColor = false) {
-                AppearanceDialogContent(selected = ThemePreference.SYSTEM, onSelect = { picked = it }, onDismiss = {})
+                CustomizeContent(
+                    theme = ThemePreference.SYSTEM,
+                    colors = PriorityColors.DEFAULT,
+                    onBack = {},
+                    onThemeSelected = { picked = it },
+                    onColorSelected = { _, _ -> },
+                    onResetColors = {},
+                )
             }
         }
 
@@ -753,6 +794,96 @@ class ScreensTest {
         compose.onNodeWithText("Dark").performClick()
 
         assertEquals(ThemePreference.DARK, picked)
+    }
+
+    @Test
+    fun `customize picks any color for a priority, and resets them`() {
+        var colors by mutableStateOf(PriorityColors.DEFAULT)
+        var resets = 0
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                CustomizeContent(
+                    theme = ThemePreference.SYSTEM,
+                    colors = colors,
+                    onBack = {},
+                    onThemeSelected = {},
+                    onColorSelected = { priority, color -> colors = colors.with(priority, color) },
+                    onResetColors = { resets++ },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Reset to the original colors").assertIsNotEnabled()
+        compose.onNodeWithText("Urgent").performClick()
+        compose.onNodeWithText("Urgent color").assertIsDisplayed()
+        compose.onNodeWithText("#D93025").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Red").assertIsSelected()
+
+        // A quick pick.
+        compose.onNodeWithContentDescription("Purple").performScrollTo().performClick()
+        compose.onNodeWithText("#9334E6").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Done").performClick()
+
+        assertEquals(0xFF9334E6.toInt(), colors.customOf(Priority.URGENT))
+        compose.onNodeWithText("Urgent color").assertDoesNotExist()
+        compose.onNodeWithText("Custom").assertIsDisplayed()
+
+        // Any hue, from the bar (as a screen reader would set it).
+        compose.onNodeWithText("High").performClick()
+        compose.onNodeWithContentDescription("Hue").performSemanticsAction(SemanticsActions.SetProgress) { it(240f) }
+        compose.onNodeWithText("Done").performClick()
+        val high = Color(colors.customOf(Priority.HIGH)!!)
+        assertTrue(high.blue > high.red && high.blue > high.green)
+
+        // Back to the original from the dialog.
+        compose.onNodeWithText("Urgent").performClick()
+        compose.onNodeWithText("Use original").performClick()
+        assertNull(colors.customOf(Priority.URGENT))
+
+        compose.onNodeWithText("Reset to the original colors").performScrollTo().performClick()
+        assertEquals(1, resets)
+    }
+
+    @Test
+    fun `a category's details count its tasks, and its open ones by priority`() {
+        val work = Category(CategoryId("work"), "Work", NOW)
+        compose.setContent {
+            TodoTheme(dynamicColor = false) {
+                ListsContent(
+                    state = ListsUiState(
+                        isLoading = false,
+                        categories = listOf(
+                            CategorySummary(
+                                work,
+                                ListCounts(open = 3, overdue = 1, done = 2),
+                                mapOf(Priority.URGENT to 2, Priority.HIGH to 0, Priority.MEDIUM to 1, Priority.LOW to 0, Priority.MINIMAL to 0),
+                            ),
+                        ),
+                    ),
+                    onOpenList = {},
+                    onNewCategory = {},
+                    onRename = {},
+                    onDelete = {},
+                    onDialogNameChange = {},
+                    onDialogConfirm = {},
+                    onDialogDismiss = {},
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Options for Work").performClick()
+        compose.onNodeWithText("Details").performClick()
+
+        compose.onNodeWithText("Open tasks by priority").assertIsDisplayed()
+        compose.onNode(hasText("Open") and hasText("3")).assertIsDisplayed()
+        compose.onNode(hasText("Overdue") and hasText("1")).assertIsDisplayed()
+        compose.onNode(hasText("Done") and hasText("2")).assertIsDisplayed()
+        compose.onNode(hasText("Urgent") and hasText("2")).assertIsDisplayed()
+        compose.onNode(hasText("Medium") and hasText("1")).assertIsDisplayed()
+        compose.onNode(hasText("High") and hasText("0")).assertIsDisplayed()
+
+        compose.onNodeWithText("Close").performClick()
+        compose.onNodeWithText("Open tasks by priority").assertDoesNotExist()
     }
 }
 

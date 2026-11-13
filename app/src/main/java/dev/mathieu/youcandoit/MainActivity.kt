@@ -14,6 +14,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,6 +26,7 @@ import dev.mathieu.youcandoit.settings.AppearanceViewModel
 import dev.mathieu.youcandoit.ui.BackupActions
 import dev.mathieu.youcandoit.ui.TodoApp
 import dev.mathieu.youcandoit.ui.backup.BackupViewModel
+import dev.mathieu.youcandoit.ui.common.LocalPriorityColors
 import dev.mathieu.youcandoit.ui.theme.TodoTheme
 import dev.mathieu.youcandoit.ui.welcome.WelcomeScreen
 import dev.mathieu.youcandoit.ui.welcome.WelcomeViewModel
@@ -52,6 +54,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val theme by appearance.theme.collectAsStateWithLifecycle()
+            val priorityColors by appearance.priorityColors.collectAsStateWithLifecycle()
             val darkTheme = theme.isDark(systemIsDark = isSystemInDarkTheme())
 
             // Status/navigation bar icons follow the app's theme, not just the phone's.
@@ -74,29 +77,31 @@ class MainActivity : ComponentActivity() {
             }
 
             TodoTheme(darkTheme = darkTheme) {
-                when (val show = showWelcome) {
-                    null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) // loading, a split second
-                    else -> Box(Modifier.fillMaxSize()) {
-                        // The welcome covers the app rather than replacing it: shown again on a new day,
-                        // it must not lose the screen the user was on (or the task a reminder opened).
-                        Box(if (show) Modifier.clearAndSetSemantics {} else Modifier) {
-                            TodoApp(
-                                onShowWelcome = welcome::onShowAgain,
-                                updateReady = updateReady,
-                                onRestartToUpdate = updates::onRestart,
-                                onUpdateLater = updates::onRestartLater,
-                                backup = BackupActions(
-                                    onExport = { exportLauncher.launch(backup.exportFileName()) },
-                                    // Any type: Drive and file managers don't all label a .json file the same way.
-                                    onImport = { importLauncher.launch(arrayOf("*/*")) },
-                                    message = backupMessage,
-                                    onMessageShown = backup::onMessageShown,
-                                ),
-                            )
-                        }
-                        if (show) {
-                            BackHandler(onBack = welcome::onStart)
-                            WelcomeScreen(onStart = welcome::onStart)
+                CompositionLocalProvider(LocalPriorityColors provides priorityColors) {
+                    when (val show = showWelcome) {
+                        null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) // loading, a split second
+                        else -> Box(Modifier.fillMaxSize()) {
+                            // The welcome covers the app rather than replacing it: shown again on a new day,
+                            // it must not lose the screen the user was on (or the task a reminder opened).
+                            Box(if (show) Modifier.clearAndSetSemantics {} else Modifier) {
+                                TodoApp(
+                                    onShowWelcome = welcome::onShowAgain,
+                                    updateReady = updateReady,
+                                    onRestartToUpdate = updates::onRestart,
+                                    onUpdateLater = updates::onRestartLater,
+                                    backup = BackupActions(
+                                        onExport = { exportLauncher.launch(backup.exportFileName()) },
+                                        // Any type: Drive and file managers don't all label a .json file the same way.
+                                        onImport = { importLauncher.launch(arrayOf("*/*")) },
+                                        message = backupMessage,
+                                        onMessageShown = backup::onMessageShown,
+                                    ),
+                                )
+                            }
+                            if (show) {
+                                BackHandler(onBack = welcome::onStart)
+                                WelcomeScreen(onStart = welcome::onStart)
+                            }
                         }
                     }
                 }

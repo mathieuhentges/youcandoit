@@ -46,6 +46,7 @@ import dev.mathieu.youcandoit.ui.lists.ListsScreen
 import dev.mathieu.youcandoit.ui.navigation.NavArgs
 import dev.mathieu.youcandoit.ui.navigation.Routes
 import dev.mathieu.youcandoit.ui.tasks.TaskListScreen
+import dev.mathieu.youcandoit.settings.CustomizeScreen
 
 private enum class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector) {
     HOME(Routes.HOME, R.string.nav_home, Icons.Filled.Home),
@@ -155,6 +156,7 @@ private fun TodoNavigation(
                     onBack = null,
                     onShowWelcome = onShowWelcome,
                     onOpenAbout = { nav.navigate(Routes.ABOUT) },
+                    onOpenCustomize = { nav.navigate(Routes.CUSTOMIZE) },
                     onExport = backup.onExport,
                     onImport = backup.onImport,
                 )
@@ -177,6 +179,9 @@ private fun TodoNavigation(
             }
             composable(Routes.ABOUT) {
                 AboutScreen(onBack = { nav.popBackStack() })
+            }
+            composable(Routes.CUSTOMIZE) {
+                CustomizeScreen(onBack = { nav.popBackStack() })
             }
             composable(
                 Routes.NEW_TASK,

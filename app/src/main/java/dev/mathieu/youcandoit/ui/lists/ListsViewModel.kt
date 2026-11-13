@@ -6,6 +6,7 @@ import dev.mathieu.youcandoit.domain.model.Category
 import dev.mathieu.youcandoit.domain.model.CategorySummary
 import dev.mathieu.youcandoit.domain.model.DomainError
 import dev.mathieu.youcandoit.domain.model.ListCounts
+import dev.mathieu.youcandoit.domain.model.Priority
 import dev.mathieu.youcandoit.domain.usecase.CreateCategory
 import dev.mathieu.youcandoit.domain.usecase.DeleteCategory
 import dev.mathieu.youcandoit.domain.usecase.ObserveListsOverview
@@ -34,6 +35,7 @@ data class ListsUiState(
     val isLoading: Boolean = true,
     val categories: List<CategorySummary> = emptyList(),
     val uncategorized: ListCounts = ListCounts.EMPTY,
+    val uncategorizedByPriority: Map<Priority, Int> = Priority.entries.associateWith { 0 },
     val dialog: CategoryDialog? = null,
 )
 
@@ -58,6 +60,7 @@ class ListsViewModel @Inject constructor(
                 isLoading = false,
                 categories = overview.categories,
                 uncategorized = overview.uncategorized,
+                uncategorizedByPriority = overview.uncategorizedByPriority,
                 dialog = currentDialog,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListsUiState())

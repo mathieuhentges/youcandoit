@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.filled.Add
@@ -32,13 +34,13 @@ import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -54,6 +56,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -90,6 +93,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -100,7 +104,6 @@ import dev.mathieu.youcandoit.domain.model.Priority
 import dev.mathieu.youcandoit.domain.model.TaskId
 import dev.mathieu.youcandoit.domain.model.TaskList
 import dev.mathieu.youcandoit.domain.model.TaskOrder
-import dev.mathieu.youcandoit.settings.AppearanceDialog
 import dev.mathieu.youcandoit.settings.ListSort
 import dev.mathieu.youcandoit.ui.common.CategoryLabel
 import dev.mathieu.youcandoit.ui.common.DoneTaskRow
@@ -124,12 +127,12 @@ fun TaskListScreen(
     onBack: (() -> Unit)?,
     onShowWelcome: (() -> Unit)? = null,
     onOpenAbout: (() -> Unit)? = null,
+    onOpenCustomize: (() -> Unit)? = null,
     onExport: (() -> Unit)? = null,
     onImport: (() -> Unit)? = null,
     viewModel: TaskListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var showAppearance by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.title) {
         if (state.title == ListTitle.Missing) onBack?.invoke()
     }
@@ -145,19 +148,18 @@ fun TaskListScreen(
         onReorder = viewModel::onReorder,
         onSortChange = viewModel::onSortChange,
         onReorderSubTasks = viewModel::onReorderSubTasks,
+        onToggleSubTasks = viewModel::onToggleSubTasks,
         onMakeSubTask = viewModel::onMakeSubTask,
         onMoveOutOfParent = viewModel::onMoveOutOfParent,
         onConfirmDone = viewModel::onConfirmDone,
         onDismissConfirmDone = viewModel::onDismissConfirmDone,
         selection = viewModel,
-        // Home only: the app-wide appearance setting lives on the first screen.
-        onOpenAppearance = if (onBack == null) ({ showAppearance = true }) else null,
+        onOpenCustomize = onOpenCustomize,
         onShowWelcome = onShowWelcome,
         onOpenAbout = onOpenAbout,
         onExport = onExport,
         onImport = onImport,
     )
-    if (showAppearance) AppearanceDialog(onDismiss = { showAppearance = false })
 }
 
 @Composable
@@ -176,15 +178,15 @@ fun TaskListContent(
     onConfirmDone: () -> Unit = {},
     selection: TaskSelectionActions = TaskSelectionActions.None,
     onDismissConfirmDone: () -> Unit = {},
-    onOpenAppearance: (() -> Unit)? = null,
+    onOpenCustomize: (() -> Unit)? = null,
     onShowWelcome: (() -> Unit)? = null,
     onOpenAbout: (() -> Unit)? = null,
     onExport: (() -> Unit)? = null,
     onImport: (() -> Unit)? = null,
     onMakeSubTask: (TaskId, TaskId) -> Unit = { _, _ -> },
     onMoveOutOfParent: (TaskId) -> Unit = {},
+    onToggleSubTasks: (TaskId) -> Unit = {},
 ) {
-    var collapsed by rememberSaveable { mutableStateOf(listOf<String>()) }
     // Category headers folded away for now (not saved across launches).
     var collapsedGroups by rememberSaveable { mutableStateOf(listOf<String>()) }
     // In selection mode a tap (on the row or its check) picks the task instead of opening or ticking it.
@@ -268,7 +270,7 @@ fun TaskListContent(
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item(key = "header") { ListHeader(state, onSortChange, AppMenuActions(onOpenAppearance, onShowWelcome, onOpenAbout, onExport, onImport)) }
+            item(key = "header") { ListHeader(state, onSortChange, AppMenuActions(onOpenCustomize, onShowWelcome, onOpenAbout, onExport, onImport)) }
 
             if (!state.isLoading && state.open.isEmpty() && state.done.isEmpty()) {
                 item(key = "empty") {
@@ -292,8 +294,7 @@ fun TaskListContent(
                         )
                         is ListRow.Open -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             val item = row.item
-                            val parentKey = item.task.id.value
-                            val expanded = parentKey !in collapsed
+                            val expanded = item.task.id !in state.collapsed
                             val canDrag = state.sort.canDrag && !selecting
                             val moveUp = if (canDrag) rows.moved(row.key, up = true) else null
                             val moveDown = if (canDrag) rows.moved(row.key, up = false) else null
@@ -303,56 +304,71 @@ fun TaskListContent(
                             // One level only: a task with sub tasks of its own can't go under another.
                             val newParent = if (canDrag && children.isEmpty()) rows.taskAbove(row.key) else null
                             val nestLabel = newParent?.let { stringResource(R.string.action_make_sub_task, it.item.task.title) }
-                            OpenTaskRow(
-                                item = item,
-                                onToggle = { check(item) },
-                                onClick = { tap(item) },
-                                onLongClick = { longPress(item) },
-                                selected = item.task.id in state.selected,
-                                // Dragging isn't available to screen reader users: offer the same moves as actions.
-                                modifier = Modifier
-                                    .nestPreview { if (isDragging && newParent != null) sideways.progress.coerceAtLeast(0f) else 0f }
-                                    .shadow(if (isDragging) 8.dp else 0.dp, RowShape)
-                                    .semantics {
-                                        customActions = listOfNotNull(
-                                            moveUp?.let { CustomAccessibilityAction(moveUpLabel) { rows = it; save(row.key); true } },
-                                            moveDown?.let { CustomAccessibilityAction(moveDownLabel) { rows = it; save(row.key); true } },
-                                            newParent?.let {
-                                                CustomAccessibilityAction(nestLabel!!) { onMakeSubTask(item.task.id, it.item.task.id); true }
-                                            },
-                                        )
-                                    },
-                                // Sorted by priority or deadline, the order isn't the user's to change.
-                                dragHandle = if (!canDrag) null else ({
-                                    Icon(
-                                        Icons.Filled.DragIndicator,
-                                        contentDescription = stringResource(R.string.action_reorder, item.task.title),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier
-                                            .trackSideways(sideways) { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
-                                            .draggableHandle(
-                                                onDragStarted = {
-                                                    dragging = true
-                                                    sideways.reset()
-                                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                },
-                                                onDragStopped = {
-                                                    dragging = false
-                                                    // Read where it was dropped: the task above may have changed during the drag.
-                                                    val parent = rows.taskAbove(row.key).takeIf { children.isEmpty() }
-                                                    if (sideways.progress >= 1f && parent != null) {
-                                                        onMakeSubTask(item.task.id, parent.item.task.id)
-                                                    } else {
-                                                        save(row.key)
-                                                    }
+                            Box {
+                                OpenTaskRow(
+                                    item = item,
+                                    onToggle = { check(item) },
+                                    onClick = { tap(item) },
+                                    onLongClick = { longPress(item) },
+                                    selected = item.task.id in state.selected,
+                                    // Dragging isn't available to screen reader users: offer the same moves as actions.
+                                    modifier = Modifier
+                                        .nestPreview { if (isDragging && newParent != null) sideways.progress.coerceAtLeast(0f) else 0f }
+                                        .shadow(if (isDragging) 8.dp else 0.dp, RowShape)
+                                        .semantics {
+                                            customActions = listOfNotNull(
+                                                moveUp?.let { CustomAccessibilityAction(moveUpLabel) { rows = it; save(row.key); true } },
+                                                moveDown?.let { CustomAccessibilityAction(moveDownLabel) { rows = it; save(row.key); true } },
+                                                newParent?.let {
+                                                    CustomAccessibilityAction(nestLabel!!) { onMakeSubTask(item.task.id, it.item.task.id); true }
                                                 },
                                             )
-                                            .padding(horizontal = 10.dp, vertical = 12.dp),
+                                        },
+                                    // Sorted by priority or deadline, the order isn't the user's to change.
+                                    dragHandle = if (!canDrag) null else ({
+                                        Icon(
+                                            Icons.Filled.DragIndicator,
+                                            contentDescription = stringResource(R.string.action_reorder, item.task.title),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier
+                                                .trackSideways(sideways) { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                                                .draggableHandle(
+                                                    onDragStarted = {
+                                                        dragging = true
+                                                        sideways.reset()
+                                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    },
+                                                    onDragStopped = {
+                                                        dragging = false
+                                                        // Read where it was dropped: the task above may have changed during the drag.
+                                                        val parent = rows.taskAbove(row.key).takeIf { children.isEmpty() }
+                                                        if (sideways.progress >= 1f && parent != null) {
+                                                            onMakeSubTask(item.task.id, parent.item.task.id)
+                                                        } else {
+                                                            save(row.key)
+                                                        }
+                                                    },
+                                                )
+                                                .padding(horizontal = 10.dp, vertical = 12.dp),
+                                        )
+                                    }),
+                                    expanded = expanded,
+                                    onToggleExpanded = { onToggleSubTasks(item.task.id) },
+                                )
+                                // Says what letting go will do, so nesting can be found by dragging.
+                                if (isDragging && newParent != null) {
+                                    val ready = sideways.progress >= 1f
+                                    NestHint(
+                                        text = stringResource(
+                                            if (ready) R.string.nest_hint_release else R.string.nest_hint_push,
+                                            newParent.item.task.title,
+                                        ),
+                                        ready = ready,
+                                        toRight = true,
+                                        modifier = Modifier.align(Alignment.TopCenter),
                                     )
-                                }),
-                                expanded = expanded,
-                                onToggleExpanded = { collapsed = if (expanded) collapsed + parentKey else collapsed - parentKey },
-                            )
+                            }
+                            }
                             if (expanded && children.isNotEmpty()) {
                                 SubTaskBlock(
                                     parentTitle = item.task.title,
@@ -456,7 +472,7 @@ private fun ListHeader(
 
 /** Home's app-wide items; each one is null where it isn't offered. */
 private data class AppMenuActions(
-    val onOpenAppearance: (() -> Unit)?,
+    val onOpenCustomize: (() -> Unit)?,
     val onShowWelcome: (() -> Unit)?,
     val onOpenAbout: (() -> Unit)?,
     val onExport: (() -> Unit)?,
@@ -466,7 +482,7 @@ private data class AppMenuActions(
 @Composable
 private fun AppMenu(actions: AppMenuActions) {
     val items = listOfNotNull(
-        actions.onOpenAppearance?.let { Triple(R.string.appearance_title, Icons.Outlined.DarkMode, it) },
+        actions.onOpenCustomize?.let { Triple(R.string.title_customize, Icons.Outlined.Palette, it) },
         actions.onShowWelcome?.let { Triple(R.string.action_show_welcome, Icons.Outlined.FavoriteBorder, it) },
         actions.onExport?.let { Triple(R.string.action_export, Icons.Outlined.FileUpload, it) },
         actions.onImport?.let { Triple(R.string.action_import, Icons.Outlined.FileDownload, it) },
@@ -616,47 +632,58 @@ private fun SubTaskBlock(
             key(child.task.id.value) {
                 // Even an only child has a handle: dragging it left takes it out of its parent.
                 val reorderable = canDrag && open.size > 1
-                OpenTaskRow(
-                    item = child,
-                    onToggle = { onCheck(child) },
-                    onClick = { onTap(child) },
-                    onLongClick = { onLongPress(child) },
-                    selected = child.task.id in selected,
-                    modifier = Modifier
-                        .nestPreview { if (isDragging) sideways.progress.coerceAtMost(0f) else 0f }
-                        .shadow(if (isDragging) 8.dp else 0.dp, RowShape)
-                        .semantics {
-                            if (canDrag) {
-                                customActions = listOfNotNull(
-                                    CustomAccessibilityAction(moveUpLabel) { move(index, index - 1); true }.takeIf { reorderable && index > 0 },
-                                    CustomAccessibilityAction(moveDownLabel) { move(index, index + 1); true }
-                                        .takeIf { reorderable && index < open.lastIndex },
-                                    CustomAccessibilityAction(moveOutLabel) { onMoveOut(child.task.id); true },
-                                )
-                            }
-                        },
-                    dragHandle = if (!canDrag) null else ({
-                        Icon(
-                            Icons.Filled.DragIndicator,
-                            contentDescription = stringResource(R.string.action_reorder, child.task.title),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .trackSideways(sideways) { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
-                                .draggableHandle(
-                                    onDragStarted = {
-                                        dragging = true
-                                        sideways.reset()
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    },
-                                    onDragStopped = {
-                                        dragging = false
-                                        if (sideways.progress <= -1f) onMoveOut(child.task.id)
-                                    },
-                                )
-                                .padding(horizontal = 10.dp, vertical = 12.dp),
+                Box {
+                    OpenTaskRow(
+                        item = child,
+                        onToggle = { onCheck(child) },
+                        onClick = { onTap(child) },
+                        onLongClick = { onLongPress(child) },
+                        selected = child.task.id in selected,
+                        modifier = Modifier
+                            .nestPreview { if (isDragging) sideways.progress.coerceAtMost(0f) else 0f }
+                            .shadow(if (isDragging) 8.dp else 0.dp, RowShape)
+                            .semantics {
+                                if (canDrag) {
+                                    customActions = listOfNotNull(
+                                        CustomAccessibilityAction(moveUpLabel) { move(index, index - 1); true }.takeIf { reorderable && index > 0 },
+                                        CustomAccessibilityAction(moveDownLabel) { move(index, index + 1); true }
+                                            .takeIf { reorderable && index < open.lastIndex },
+                                        CustomAccessibilityAction(moveOutLabel) { onMoveOut(child.task.id); true },
+                                    )
+                                }
+                            },
+                        dragHandle = if (!canDrag) null else ({
+                            Icon(
+                                Icons.Filled.DragIndicator,
+                                contentDescription = stringResource(R.string.action_reorder, child.task.title),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .trackSideways(sideways) { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                                    .draggableHandle(
+                                        onDragStarted = {
+                                            dragging = true
+                                            sideways.reset()
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        },
+                                        onDragStopped = {
+                                            dragging = false
+                                            if (sideways.progress <= -1f) onMoveOut(child.task.id)
+                                        },
+                                    )
+                                    .padding(horizontal = 10.dp, vertical = 12.dp),
+                            )
+                        }),
+                    )
+                    if (isDragging) {
+                        val ready = sideways.progress <= -1f
+                        NestHint(
+                            text = stringResource(if (ready) R.string.move_out_hint_release else R.string.move_out_hint_push),
+                            ready = ready,
+                            toRight = false,
+                            modifier = Modifier.align(Alignment.TopCenter),
                         )
-                    }),
-                )
+                }
+                }
             }
         }
         children.filter { it.task.isDone }.forEach { child ->
@@ -880,6 +907,35 @@ private fun rowsOf(groups: List<TaskGroup>, collapsed: List<String>): List<ListR
 
 /** The task just above [key] under the same header: the one a drag to the right puts it under. */
 private fun List<ListRow>.taskAbove(key: Any): ListRow.Open? = getOrNull(indexOfFirst { it.key == key } - 1) as? ListRow.Open
+
+/**
+ * A label over the dragged row: which way to push it, then (once [ready]) that letting go will nest it
+ * or take it out. Drawn above the row without taking room, so the list doesn't move under the finger.
+ */
+@Composable
+private fun NestHint(text: String, ready: Boolean, toRight: Boolean, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        shape = CircleShape,
+        color = if (ready) colors.primary else colors.inverseSurface,
+        contentColor = if (ready) colors.onPrimary else colors.inverseOnSurface,
+        shadowElevation = 4.dp,
+        modifier = modifier.offset(y = (-20).dp),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                if (toRight) Icons.AutoMirrored.Filled.ArrowForward else Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
 
 /** How far sideways a dragged handle must go to nest a task (right) or take it out (left). */
 private val NestDistance = 48.dp

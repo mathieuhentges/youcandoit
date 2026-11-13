@@ -7,7 +7,7 @@ class FakeReminderNotifications : ReminderNotifications {
     val shown = mutableListOf<Task>()
     val cancelled = mutableListOf<TaskId>()
 
-    override fun show(task: Task) {
+    override suspend fun show(task: Task) {
         shown += task
     }
 

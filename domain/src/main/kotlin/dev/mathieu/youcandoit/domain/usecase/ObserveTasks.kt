@@ -6,6 +6,7 @@ import dev.mathieu.youcandoit.domain.model.DoneOrder
 import dev.mathieu.youcandoit.domain.model.HistoryOrder
 import dev.mathieu.youcandoit.domain.model.ListCounts
 import dev.mathieu.youcandoit.domain.model.ListsOverview
+import dev.mathieu.youcandoit.domain.model.Priority
 import dev.mathieu.youcandoit.domain.model.Task
 import dev.mathieu.youcandoit.domain.model.TaskList
 import dev.mathieu.youcandoit.domain.model.TaskOrder
@@ -106,12 +107,20 @@ class ObserveListsOverview @Inject constructor(
                     done = inList.count { it.isDone },
                 )
             }
+            fun openByPriority(list: TaskList): Map<Priority, Int> {
+                val open = allTasks.filter { it.isOpen && list.contains(it) }
+                return Priority.entries.associateWith { priority -> open.count { it.priority == priority } }
+            }
             ListsOverview(
                 all = countsFor(TaskList.All),
                 categories = allCategories
                     .sortedWith(categoryOrder())
-                    .map { CategorySummary(it, countsFor(TaskList.InCategory(it.id))) },
+                    .map {
+                        val list = TaskList.InCategory(it.id)
+                        CategorySummary(it, countsFor(list), openByPriority(list))
+                    },
                 uncategorized = countsFor(TaskList.Uncategorized),
+                uncategorizedByPriority = openByPriority(TaskList.Uncategorized),
             )
         }
 }

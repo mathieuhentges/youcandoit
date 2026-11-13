@@ -75,6 +75,8 @@ data class TaskListUiState(
     val sort: ListSort = ListSort(),
     /** Each parent's sub tasks, open ones first; shown under the parent's row. */
     val subTasks: Map<TaskId, List<TaskItem>> = emptyMap(),
+    /** Parents whose sub tasks are folded away (remembered across launches). */
+    val collapsed: Set<TaskId> = emptySet(),
     /** A parent was ticked while it has open sub tasks: asks before ticking them too. */
     val confirmDone: TaskItem? = null,
     /** Selection mode (entered by a long press) when not empty: the tasks a bulk change applies to. */
@@ -156,7 +158,7 @@ class TaskListViewModel @Inject constructor(
 
     val uiState: StateFlow<TaskListUiState> =
         // The ticker re-evaluates "overdue" every minute, not only when data changes.
-        combine(sortedList, observeCategories(), transient, ticker.minutes) { (sort, view), categories, ui, now ->
+        combine(sortedList, observeCategories(), transient, ticker.minutes, settings.collapsedParents) { (sort, view), categories, ui, now, collapsed ->
             val byId = categories.associateBy { it.id }
             // A category's list and the Uncategorized list already say it in their title.
             val showCategory = list == TaskList.All
@@ -177,6 +179,7 @@ class TaskListViewModel @Inject constructor(
                 message = ui.message,
                 sort = sort,
                 subTasks = subTasks,
+                collapsed = collapsed.mapTo(mutableSetOf()) { TaskId(it) },
                 confirmDone = open.firstOrNull { it.task.id == ui.confirmDone },
                 // A selected task that was meanwhile deleted or archived drops out of the selection.
                 selected = ui.selected.filterTo(mutableSetOf()) { id ->
@@ -242,6 +245,17 @@ class TaskListViewModel @Inject constructor(
     /** A sub task dragged to the left: it leaves its parent. */
     fun onMoveOutOfParent(id: TaskId) {
         viewModelScope.launch { moveOutOfParent(id).onFailure(::report) }
+    }
+
+    /** The sub-task count next to a parent was tapped: fold its sub tasks away, or show them again. */
+    fun onToggleSubTasks(parentId: TaskId) {
+        viewModelScope.launch {
+            val now = uiState.value.collapsed
+            val toggled = if (parentId in now) now - parentId else now + parentId
+            // Only parents that still have sub tasks, so ids of deleted tasks don't pile up.
+            val parents = uiState.value.subTasks.filterValues { it.isNotEmpty() }.keys
+            settings.setCollapsedParents(toggled.filter { it in parents || it == parentId }.mapTo(mutableSetOf()) { it.value })
+        }
     }
 
     /** A drag inside a parent ended: [orderedIds] is now the order of its open sub tasks. */

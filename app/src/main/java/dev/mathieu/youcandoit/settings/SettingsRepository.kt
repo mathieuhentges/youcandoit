@@ -4,9 +4,12 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import dev.mathieu.youcandoit.domain.model.HistoryOrder
+import dev.mathieu.youcandoit.domain.model.Priority
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +32,13 @@ interface SettingsRepository {
     /** The day the user last turned down an update; null if never. */
     val updateDeclinedOn: Flow<LocalDate?>
     suspend fun markUpdateDeclined(on: LocalDate)
+
+    val priorityColors: Flow<PriorityColors>
+    suspend fun setPriorityColors(colors: PriorityColors)
+
+    /** The ids of the parent tasks whose sub tasks are folded away. */
+    val collapsedParents: Flow<Set<String>>
+    suspend fun setCollapsedParents(ids: Set<String>)
 }
 
 class DataStoreSettingsRepository @Inject constructor(
@@ -76,6 +86,25 @@ class DataStoreSettingsRepository @Inject constructor(
         store.edit { it[UPDATE_DECLINED_ON] = on.toEpochDay() }
     }
 
+    override val priorityColors: Flow<PriorityColors> = store.data.map { prefs ->
+        PriorityColors(Priority.entries.mapNotNull { priority -> prefs[colorKey(priority)]?.let { priority to it } }.toMap())
+    }
+
+    override suspend fun setPriorityColors(colors: PriorityColors) {
+        store.edit { prefs ->
+            Priority.entries.forEach { priority ->
+                val argb = colors.customOf(priority)
+                if (argb != null) prefs[colorKey(priority)] = argb else prefs.remove(colorKey(priority))
+            }
+        }
+    }
+
+    override val collapsedParents: Flow<Set<String>> = store.data.map { it[COLLAPSED_PARENTS].orEmpty() }
+
+    override suspend fun setCollapsedParents(ids: Set<String>) {
+        store.edit { it[COLLAPSED_PARENTS] = ids }
+    }
+
     private companion object {
         val THEME = stringPreferencesKey("theme")
         // Replaces the "welcome_seen" flag of release 1, which is left unread: the welcome shows again once.
@@ -85,8 +114,19 @@ class DataStoreSettingsRepository @Inject constructor(
         val DONE_ORDER = stringPreferencesKey("done_order")
         val HISTORY_ORDER = stringPreferencesKey("history_order")
         val UPDATE_DECLINED_ON = longPreferencesKey("update_declined_on")
+        val COLLAPSED_PARENTS = stringSetPreferencesKey("collapsed_parents")
 
-        /** What's stored: fixed strings, safe from renaming the enum. */
+        /** What's stored: fixed strings, safe from renaming the enums. */
+        fun colorKey(priority: Priority) = intPreferencesKey(
+            when (priority) {
+                Priority.URGENT -> "priority_color_urgent"
+                Priority.HIGH -> "priority_color_high"
+                Priority.MEDIUM -> "priority_color_medium"
+                Priority.LOW -> "priority_color_low"
+                Priority.MINIMAL -> "priority_color_minimal"
+            },
+        )
+
         fun keyOf(order: HistoryOrder): String = when (order) {
             HistoryOrder.RECENTLY_ARCHIVED -> "recently_archived"
             HistoryOrder.RECENTLY_DONE -> "recently_done"

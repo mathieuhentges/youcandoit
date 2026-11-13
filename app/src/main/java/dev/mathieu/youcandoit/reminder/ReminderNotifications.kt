@@ -8,29 +8,33 @@ import android.text.format.DateUtils
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.net.toUri
 import dev.mathieu.youcandoit.DeepLinks
 import dev.mathieu.youcandoit.MainActivity
 import dev.mathieu.youcandoit.R
-import dev.mathieu.youcandoit.domain.model.Priority
 import dev.mathieu.youcandoit.domain.model.Task
 import dev.mathieu.youcandoit.domain.model.TaskId
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.mathieu.youcandoit.settings.SettingsRepository
+import dev.mathieu.youcandoit.ui.common.style
 import javax.inject.Inject
+import kotlinx.coroutines.flow.first
 
 /** Shows and removes reminder notifications. An interface so the reminder logic is testable on the JVM. */
 interface ReminderNotifications {
-    fun show(task: Task)
+    suspend fun show(task: Task)
     fun cancel(taskId: TaskId)
 }
 
 class SystemReminderNotifications @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val settings: SettingsRepository,
 ) : ReminderNotifications {
     private val manager = NotificationManagerCompat.from(context)
 
     @SuppressLint("MissingPermission") // checked just below
-    override fun show(task: Task) {
+    override suspend fun show(task: Task) {
         if (!ReminderPermissions.notificationsAllowed(context)) return
 
         val deadline = task.deadline
@@ -42,7 +46,7 @@ class SystemReminderNotifications @Inject constructor(
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(task.title)
             .setContentText(text)
-            .setColor(task.priority.notificationColor())
+            .setColor(settings.priorityColors.first().style(task.priority, dark = false).dot.toArgb())
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -84,11 +88,3 @@ class SystemReminderNotifications @Inject constructor(
     }
 }
 
-/** Same hues as the UI's priority dots (light theme). */
-private fun Priority.notificationColor(): Int = when (this) {
-    Priority.URGENT -> 0xFFD93025
-    Priority.HIGH -> 0xFFF57C00
-    Priority.MEDIUM -> 0xFF00ACC1
-    Priority.LOW -> 0xFF4285F4
-    Priority.MINIMAL -> 0xFF9AA0A6
-}.toInt()

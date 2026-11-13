@@ -28,15 +28,21 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -49,20 +55,16 @@ import dev.mathieu.youcandoit.domain.reminder.ReminderPolicy
 
 val RowShape = RoundedCornerShape(16.dp)
 
+/** Just the priority's color, so the title keeps the room; its name is read out by screen readers. */
 @Composable
-fun PriorityChip(priority: Priority, modifier: Modifier = Modifier) {
-    val style = priority.style()
-    Row(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(style.container)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box(Modifier.size(8.dp).background(style.dot, CircleShape))
-        Text(stringResource(priority.labelRes()), color = style.content, style = MaterialTheme.typography.labelMedium)
-    }
+fun PriorityDot(priority: Priority, modifier: Modifier = Modifier) {
+    val label = stringResource(priority.labelRes())
+    Box(
+        modifier
+            .size(10.dp)
+            .background(priority.style().dot, CircleShape)
+            .semantics { contentDescription = label },
+    )
 }
 
 /** The round checkbox: a ring in the priority color when open, filled with a check when done. */
@@ -112,25 +114,18 @@ fun OpenTaskRow(
             DoneCheck(done = false, color = task.priority.style().dot, label = stringResource(R.string.action_mark_done, task.title), onClick = onToggle)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(task.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                OpenTaskMeta(item)
+                OpenTaskMeta(item, showCount = onToggleExpanded == null)
             }
-            PriorityChip(task.priority)
-            if (item.subTasks != null && onToggleExpanded != null) {
-                IconButton(onClick = onToggleExpanded) {
-                    Icon(
-                        if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                        contentDescription = stringResource(if (expanded) R.string.action_hide_sub_tasks else R.string.action_show_sub_tasks),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            PriorityDot(task.priority)
+            val count = item.subTasks
+            if (count != null && onToggleExpanded != null) SubTaskToggle(count, expanded, onToggleExpanded)
             dragHandle?.invoke()
         }
     }
 }
 
 @Composable
-private fun OpenTaskMeta(item: TaskItem) {
+private fun OpenTaskMeta(item: TaskItem, showCount: Boolean) {
     val task = item.task
     val deadline = task.deadline
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
@@ -146,7 +141,7 @@ private fun OpenTaskMeta(item: TaskItem) {
             )
             else -> Text(formatDateTime(deadline), style = small, color = muted)
         }
-        item.subTasks?.let {
+        item.subTasks?.takeIf { showCount }?.let {
             Text(stringResource(R.string.sub_task_count, it.done, it.total), style = small, color = muted, fontWeight = FontWeight.Medium)
         }
         if (ReminderPolicy.hasReminder(task)) {
@@ -198,6 +193,39 @@ fun DoneTaskRow(
                 )
                 Text(doneMeta(item), style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
+    }
+}
+
+/**
+ * The parent's "1/3" with an arrow: how many of its sub tasks are done, and a tap folds them away or
+ * shows them again. Filled while folded, so a hidden list stands out.
+ */
+@Composable
+private fun SubTaskToggle(count: SubTaskCount, expanded: Boolean, onToggle: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val label = stringResource(if (expanded) R.string.action_hide_sub_tasks else R.string.action_show_sub_tasks) +
+        ", " + pluralStringResource(R.plurals.sub_task_count_description, count.total, count.done, count.total)
+    Surface(
+        onClick = onToggle,
+        shape = CircleShape,
+        color = if (expanded) colors.surfaceContainerHigh else colors.secondaryContainer,
+        contentColor = if (expanded) colors.onSurfaceVariant else colors.onSecondaryContainer,
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .clearAndSetSemantics {
+                contentDescription = label
+                role = Role.Button
+                onClick { onToggle(); true }
+            },
+    ) {
+        Row(
+            Modifier.padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(stringResource(R.string.sub_task_count, count.done, count.total), style = MaterialTheme.typography.labelLarge)
+            Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null, modifier = Modifier.size(18.dp))
         }
     }
 }

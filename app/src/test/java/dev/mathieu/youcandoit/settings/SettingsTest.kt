@@ -3,6 +3,7 @@ package dev.mathieu.youcandoit.settings
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import dev.mathieu.youcandoit.domain.model.DoneOrder
 import dev.mathieu.youcandoit.domain.model.HistoryOrder
+import dev.mathieu.youcandoit.domain.model.Priority
 import dev.mathieu.youcandoit.domain.model.TaskOrder
 import dev.mathieu.youcandoit.ui.MainDispatcherRule
 import java.io.File
@@ -117,6 +118,48 @@ class SettingsTest {
 
         assertEquals(ThemePreference.LIGHT, vm.theme.value)
     }
+
+    @Test
+    fun `priority colors start as the originals and each pick is remembered`() = runTest {
+        val settings = repository()
+        assertTrue(settings.priorityColors.first().isDefault)
+
+        settings.setPriorityColors(PriorityColors.DEFAULT.with(Priority.LOW, 0xFF123456.toInt()))
+
+        val stored = settings.priorityColors.first()
+        assertEquals(0xFF123456.toInt(), stored.customOf(Priority.LOW))
+        assertNull(stored.customOf(Priority.URGENT))
+
+        settings.setPriorityColors(stored.with(Priority.LOW, null))
+
+        assertTrue(settings.priorityColors.first().isDefault)
+    }
+
+    @Test
+    fun `folded parents are remembered`() = runTest {
+        val settings = repository()
+        assertEquals(emptySet(), settings.collapsedParents.first())
+
+        settings.setCollapsedParents(setOf("p1", "p2"))
+
+        assertEquals(setOf("p1", "p2"), settings.collapsedParents.first())
+    }
+
+    @Test
+    fun `the view model changes one priority's color and resets them all`() = runTest {
+        val fake = FakeSettings()
+        val vm = AppearanceViewModel(fake)
+
+        vm.onPriorityColorSelected(Priority.URGENT, 0xFFE52592.toInt())
+        vm.onPriorityColorSelected(Priority.HIGH, 0xFFF9AB00.toInt())
+
+        assertEquals(0xFFE52592.toInt(), fake.priorityColors.value.customOf(Priority.URGENT))
+        assertEquals(0xFFF9AB00.toInt(), vm.priorityColors.value.customOf(Priority.HIGH))
+
+        vm.onResetPriorityColors()
+
+        assertTrue(vm.priorityColors.value.isDefault)
+    }
 }
 
 class FakeSettings : SettingsRepository {
@@ -147,5 +190,17 @@ class FakeSettings : SettingsRepository {
 
     override suspend fun markUpdateDeclined(on: LocalDate) {
         updateDeclinedOn.value = on
+    }
+
+    override val priorityColors = MutableStateFlow(PriorityColors.DEFAULT)
+
+    override val collapsedParents = MutableStateFlow(emptySet<String>())
+
+    override suspend fun setCollapsedParents(ids: Set<String>) {
+        collapsedParents.value = ids
+    }
+
+    override suspend fun setPriorityColors(colors: PriorityColors) {
+        priorityColors.value = colors
     }
 }

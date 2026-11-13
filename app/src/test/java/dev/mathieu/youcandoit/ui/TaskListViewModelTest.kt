@@ -204,6 +204,27 @@ class TaskListViewModelTest {
     }
 
     @Test
+    fun `folding a parent's sub tasks is remembered, and unfolding brings them back`() = runTest {
+        env.tasks.upsert(aTask("p"))
+        env.tasks.upsert(aTask("c", parentId = TaskId("p")))
+        val vm = viewModel()
+        keepCollecting(vm.uiState)
+
+        vm.onToggleSubTasks(TaskId("p"))
+
+        assertEquals(setOf(TaskId("p")), vm.uiState.value.collapsed)
+        assertEquals(setOf("p"), settings.collapsedParents.value)
+        // A new screen (or the next launch) starts folded too.
+        val again = viewModel()
+        keepCollecting(again.uiState)
+        assertEquals(setOf(TaskId("p")), again.uiState.value.collapsed)
+
+        vm.onToggleSubTasks(TaskId("p"))
+
+        assertTrue(vm.uiState.value.collapsed.isEmpty())
+    }
+
+    @Test
     fun `sub tasks show under their parent with a done count, and count like any task`() = runTest {
         env.tasks.upsert(aTask("p"))
         env.tasks.upsert(aTask("c1", parentId = TaskId("p"), position = 0))

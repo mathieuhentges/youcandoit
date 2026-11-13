@@ -224,7 +224,7 @@ Built with the defaults below.
 - A task with sub tasks of its own can't go under another (one level only): no picker
 - Domain: `ParentChoices` (open main tasks, by category then My order); `MakeSubTask` now also moves a sub task to another parent
 
-## Phase 18 — Export / import ✅ (not committed yet)
+## Phase 18 — Export / import ✅
 - Home ⋮ menu: **Export tasks** (system "save as" picker, `you-can-do-it-<date>.json`) and **Import tasks** (any file)
 - The file: versioned JSON (`BackupJson`, format `you-can-do-it-backup` v1): categories and every task,
   archived ones included, with sub tasks, positions, deadlines and reminders. Settings aren't included
@@ -233,6 +233,22 @@ Built with the defaults below.
 - A wrong file, a newer version's export or an unreadable file gives a message, not a crash
 - First Play upload: 1.0.1 (versionCode 2), application ID `mathieu.dev.youcandoit` as registered in
   Play Console; data from the earlier `dev.mathieu.youcandoit` copy moved over with Export / Import
+
+## Phase 19 — Priority dot, category details, Customize ✅ — release 1.0.2 (versionCode 3)
+- Task rows show just a small dot in the priority's color instead of the "Urgent" chip, so the title gets the room
+  (the priority's name is still read out by screen readers)
+- Lists: each category's ⋮ menu (and Uncategorized's) has **Details**: open / overdue / done counts and the
+  open tasks of each priority, live
+- Home ⋮ → **Customize** (a screen, replacing the Appearance dialog): the theme, and any color per priority
+  from a color picker (shade square + hue bar, 10 quick picks, "Use original"), plus "Reset to the original colors"
+- A picked color is the same in light and dark themes (the originals keep their two shades); stored as ARGB in
+  settings (`priority_color_<priority>` keys) and used everywhere a priority shows, reminder notifications
+  included; not part of the export file
+- Dragging a task shows a label over it: "Push right to put it under “X”", then "Let go: sub task of “X”"
+  once far enough (and the same for pushing a sub task left, out of its parent), so nesting can be found
+- A parent shows a "1/3" chip with an arrow next to it (sub tasks done / total); tapping it folds its sub
+  tasks away or shows them again. It replaces the small arrow and the count in the grey line under the title.
+  Which parents are folded is kept in settings (`collapsed_parents`), so it lasts across screens and launches
 
 ## Review cleanups (later)
 - Sub-task lookups (`subTasksOf`, `topPositionIn`, `ObserveSubTasks`) load the whole task table; use DAO queries on the `parent_id` index

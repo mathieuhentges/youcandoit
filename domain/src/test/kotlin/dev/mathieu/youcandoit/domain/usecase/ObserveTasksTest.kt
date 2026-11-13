@@ -11,6 +11,8 @@ import dev.mathieu.youcandoit.domain.model.HistoryOrder
 import dev.mathieu.youcandoit.domain.model.ListCounts
 import dev.mathieu.youcandoit.domain.model.Priority.HIGH
 import dev.mathieu.youcandoit.domain.model.Priority.LOW
+import dev.mathieu.youcandoit.domain.model.Priority.MEDIUM
+import dev.mathieu.youcandoit.domain.model.Priority.MINIMAL
 import dev.mathieu.youcandoit.domain.model.Priority.URGENT
 import dev.mathieu.youcandoit.domain.model.Task
 import dev.mathieu.youcandoit.domain.model.TaskList
@@ -184,6 +186,23 @@ class ObserveTasksTest {
             assertEquals(ListCounts.EMPTY, overview.categories[0].counts)
             assertEquals(ListCounts(open = 1, overdue = 1, done = 1), overview.categories[1].counts)
             assertEquals(ListCounts(open = 1, overdue = 0, done = 0), overview.uncategorized)
+        }
+    }
+
+    @Test
+    fun `lists overview counts each category's open tasks by priority`() = runTest {
+        val work = aCategory("work", "Work")
+        env.categories.upsert(work)
+        env.tasks.upsert(aTask("a", categoryId = work.id, priority = URGENT))
+        env.tasks.upsert(aTask("b", categoryId = work.id, priority = URGENT))
+        env.tasks.upsert(aTask("c", categoryId = work.id, priority = LOW))
+        env.tasks.upsert(aTask("d", categoryId = work.id, priority = URGENT).markDone(NOW))
+        env.tasks.upsert(aTask("e", priority = HIGH))
+
+        observeOverview().test {
+            val overview = awaitItem()
+            assertEquals(mapOf(MINIMAL to 0, LOW to 1, MEDIUM to 0, HIGH to 0, URGENT to 2), overview.categories.single().openByPriority)
+            assertEquals(mapOf(MINIMAL to 0, LOW to 0, MEDIUM to 0, HIGH to 1, URGENT to 0), overview.uncategorizedByPriority)
         }
     }
 }
